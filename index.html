@@ -39,8 +39,10 @@
         button { cursor: pointer; border: none; outline: none; font-family: inherit; }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); margin-bottom: 10px; }
         
-        .en-numbers, input[type="number"], input[type="date"], input[type="email"], input[type="password"] { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: inline-block; }
-        .en-numbers-center { direction: ltr !important; text-align: center !important; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: inline-block; width: 100%; }
+        /* ⚠️ تم إصلاح كلاسات الأرقام لمنعها من كسر الجداول ⚠️ */
+        .en-numbers { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
+        .en-numbers-center { direction: ltr !important; text-align: center !important; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
+        input[type="number"], input[type="date"], input[type="email"], input[type="password"] { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: block; width: 100%; }
 
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
@@ -70,7 +72,7 @@
 
         .table-responsive { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 600px; }
-        th, td { padding: 12px; text-align: start; border-bottom: 1px solid var(--border); }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border); }
         th { background: rgba(0,0,0,0.05); font-weight: bold; }
         
         .clickable-row { cursor: pointer; transition: background 0.2s; }
@@ -85,7 +87,6 @@
         .logo-container { padding: 30px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); position: relative; }
         .logo-text { font-size: 1.5rem; font-weight: bold; color: var(--primary); text-align: center; }
         
-        /* Mobile Back Button in Sidebar */
         .sidebar-close-btn { display: none; position: absolute; top: 15px; left: 15px; background: none; border: none; font-size: 1.5rem; color: var(--primary); cursor: pointer; }
 
         .nav-items { flex: 1; padding: 20px 0; overflow-y: auto; }
@@ -103,7 +104,7 @@
         @media (max-width: 768px) {
             #sidebar { position: fixed; right: -100%; top: 0; bottom: 0; width: 100vw; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: none; }
             #sidebar.active { right: 0; }
-            .sidebar-close-btn { display: block; } /* Show back arrow on mobile */
+            .sidebar-close-btn { display: block; }
             .mobile-menu-btn { display: block; }
             #header { padding: 0 15px; }
             #content-area { padding: 10px; }
@@ -113,6 +114,7 @@
             .pos-cart { height: 350px; }
             .pos-products { height: 400px; }
             .modal { width: 95%; padding: 20px 15px; }
+            .modal-lg { width: 95%; }
         }
 
         /* ================= Login Screen ================= */
@@ -122,25 +124,24 @@
         .powered-by { display: inline-block; background: rgba(139, 58, 42, 0.08); color: var(--primary); padding: 8px 25px; border-radius: 50px; margin-top: 25px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(139, 58, 42, 0.2); letter-spacing: 0.5px; }
 
         /* ================= POS Cart ================= */
-        .pos-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: 60vh; }
-        .pos-products { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; align-content: start; }
+        .pos-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: 65vh; }
+        .pos-products { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; align-content: start; }
         .pos-item-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; overflow: hidden; transition: transform 0.2s; }
         .pos-item-card:active { transform: scale(0.95); border-color: var(--primary); }
-        .pos-item-img { width: 100%; height: 80px; object-fit: cover; background: #eee; }
-        .pos-item-info { padding: 10px; font-size: 0.9rem; }
+        .pos-item-img { width: 100%; height: 90px; object-fit: cover; background: #eee; }
+        .pos-item-info { padding: 10px; font-size: 0.95rem; }
         .pos-cart { background: rgba(0,0,0,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
         .cart-items { flex: 1; overflow-y: auto; border-bottom: 1px solid var(--border); margin-bottom: 10px; padding-bottom: 10px; }
-        .cart-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; }
+        .cart-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.95rem; background: var(--card); padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
         .cart-qty-btn { background: var(--border); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 1.1rem; }
 
         /* ================= Modals & Overlays ================= */
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1100; padding: 15px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1100; padding: 15px; }
         
-        /* التعديل الجوهري للنافذة المنبثقة لجعلها مرنة وتحتوي على Scroll */
-        .modal { background: var(--card); padding: 25px; border-radius: 10px; width: 500px; max-width: 95vw; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .modal-lg { width: 900px; }
+        /* ⚠️ تكبير حجم النوافذ لتظهر بشكل كامل وعريض في الكمبيوتر ⚠️ */
+        .modal { background: var(--card); padding: 25px; border-radius: 12px; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.25); }
+        .modal-lg { width: 1000px; max-width: 98vw; } 
         
-        /* تجميل شريط التمرير داخل النافذة */
         .modal::-webkit-scrollbar { width: 8px; }
         .modal::-webkit-scrollbar-track { background: transparent; }
         .modal::-webkit-scrollbar-thumb { background: rgba(139, 58, 42, 0.2); border-radius: 10px; }
@@ -151,7 +152,6 @@
         .checkbox-box input[type="checkbox"] { width: 22px !important; height: 22px !important; margin: 0 !important; cursor: pointer; flex-shrink: 0; accent-color: var(--primary); }
         .checkbox-box span { font-size: 1rem; font-weight: 500; color: var(--text); }
         .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
-        @media (max-width: 768px) { .perm-grid { grid-template-columns: 1fr; } }
 
         /* Cloud Sync Mini Loader */
         #cloud-loader { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #fff; padding: 8px 20px; border-radius: 50px; z-index: 99999; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.95rem; font-weight: bold; pointer-events: none; transition: opacity 0.3s ease; }
@@ -380,15 +380,15 @@
                     </div>
                     <div class="card" style="padding: 10px;">
                         <div class="table-responsive">
-                            <table id="invoices-table" style="margin-top:0;">
+                            <table id="invoices-table" style="margin-top:0; width: 100%;">
                                 <thead>
                                     <tr>
                                         <th style="text-align:right">رقم الفاتورة</th>
                                         <th style="text-align:right">التاريخ</th>
                                         <th style="text-align:right">العميل</th>
-                                        <th style="text-align:center;">المجموع</th>
-                                        <th style="text-align:center;">الحالة</th>
-                                        <th style="text-align:center;">بواسطة</th>
+                                        <th style="text-align:center">المجموع</th>
+                                        <th style="text-align:center">الحالة</th>
+                                        <th style="text-align:center">بواسطة</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -586,7 +586,6 @@
                     db.settings = {
                         storeName: setRes.data.store_name || 'الذوق للمناسبات', phone: setRes.data.phone || '', vatNumber: setRes.data.vat_number || '', theme: setRes.data.theme || 'light', navOrder: setRes.data.nav_order || Object.keys(navDict), breakEvenTarget: setRes.data.break_even_target || 750, logo: setRes.data.logo || ''
                     };
-                    // إجبار ظهور زر السجل في القائمة إن لم يكن محفوظاً مسبقاً
                     if(db.settings.navOrder && !db.settings.navOrder.includes('syslogs')) {
                         const logsIndex = db.settings.navOrder.indexOf('logs');
                         if (logsIndex > -1) db.settings.navOrder.splice(logsIndex, 1);
@@ -661,7 +660,7 @@
                 const timeStr = dateObj.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
                 const dateStr = dateObj.toLocaleDateString('en-GB');
                 
-                let aClass = log.action_type; // 'إضافة', 'تعديل', 'حذف', 'إلغاء', 'دخول'
+                let aClass = log.action_type;
                 
                 container.innerHTML += `
                     <div class="syslog-row">
@@ -749,7 +748,6 @@
             document.querySelectorAll('.section').forEach(s => s.classList.add('hidden')); document.getElementById('sec-' + id).classList.remove('hidden');
             document.getElementById('page-title').innerText = navDict[id].label;
             
-            // إخفاء القائمة في الجوال بعد الاختيار بلمسة سحرية
             if(window.innerWidth <= 768) toggleSidebar(false);
 
             if(id==='dashboard') renderDashboard(); if(id==='performance') renderPerformance(); if(id==='expenses') renderExpenses();
@@ -821,7 +819,7 @@
             const search = (document.getElementById('exp-search').value || '').toLowerCase(); const todayStr = new Date().toISOString().split('T')[0];
             db.expenses.filter(e => e.date === todayStr && ((e.category && e.category.toLowerCase().includes(search)) || (e.customCategory && e.customCategory.toLowerCase().includes(search)) || (e.notes && e.notes.toLowerCase().includes(search)))).forEach(exp => {
                 let catDisplay = exp.category === 'أخرى' ? (exp.customCategory || 'أخرى') : exp.category;
-                tbody.innerHTML += `<tr><td class="en-numbers" style="text-align:right">${exp.date}</td><td><div style="font-weight:bold;">${catDisplay}</div><div style="font-size:0.8rem; color:var(--text-muted);">${exp.type}</div></td><td class="en-numbers-center">${parseFloat(exp.amount).toFixed(2)}</td>
+                tbody.innerHTML += `<tr><td style="text-align:right"><span class="en-numbers">${exp.date}</span></td><td><div style="font-weight:bold;">${catDisplay}</div><div style="font-size:0.8rem; color:var(--text-muted);">${exp.type}</div></td><td style="text-align:center;"><span class="en-numbers">${parseFloat(exp.amount).toFixed(2)}</span></td>
                     <td style="text-align:center;"><span class="created-by-badge"><i class="fas fa-user"></i> ${exp.createdBy}</span></td>
                     <td style="text-align:center;"><button class="icon-btn-solid warning" style="display:inline-flex;" onclick="openExpenseModal(${exp.id})"><i class="fas fa-edit"></i></button><button class="icon-btn-solid danger" style="display:inline-flex; margin-right:5px;" onclick="deleteExpense(${exp.id})"><i class="fas fa-trash"></i></button></td></tr>`;
             });
@@ -897,7 +895,7 @@
             db.products.filter(p => filter==='all' || p.catId == filter).forEach(p => {
                 const cat = db.categories.find(c => c.id == p.catId);
                 const img = p.image ? `<img src="${p.image}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">` : '-';
-                tbody.innerHTML += `<tr><td style="text-align:right;">${img}</td><td style="text-align:right;"><div style="font-weight:bold;">${p.nameAr}</div><div style="font-size:0.8rem; color:var(--text-muted);">${cat?cat.nameAr:''}</div></td><td class="en-numbers-center" style="text-align:center;">${p.price}</td><td style="text-align:center;">${p.active?'<span style="color:var(--success)">متاح</span>':'<span style="color:var(--danger)">مخفي</span>'}</td>
+                tbody.innerHTML += `<tr><td style="text-align:right;">${img}</td><td style="text-align:right;"><div style="font-weight:bold;">${p.nameAr}</div><div style="font-size:0.8rem; color:var(--text-muted);">${cat?cat.nameAr:''}</div></td><td style="text-align:center;"><span class="en-numbers">${p.price}</span></td><td style="text-align:center;">${p.active?'<span style="color:var(--success)">متاح</span>':'<span style="color:var(--danger)">مخفي</span>'}</td>
                     <td style="text-align:center;"><span class="created-by-badge"><i class="fas fa-user"></i> ${p.createdBy}</span></td>
                     <td style="text-align:center;"><button class="icon-btn-solid warning" style="display:inline-flex;" onclick="openProductModal(${p.id})"><i class="fas fa-edit"></i></button><button class="icon-btn-solid danger" style="display:inline-flex; margin-right:5px;" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button></td></tr>`;
             });
@@ -936,21 +934,21 @@
             db.invoices.filter(i => i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search))).forEach(inv => {
                 let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
                 
-                // تعديل محاذاة الخلايا لكي تتطابق مع الهيدر الجديد تماماً
+                // ⚠️ توافق تام بنسبة 100% بين الهيدر والبيانات (رقم، تاريخ، عميل، مجموع، حالة، بواسطة) ⚠️
                 tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
-                    <td class="en-numbers" style="text-align:right">${inv.invNumber}</td>
-                    <td class="en-numbers" style="text-align:right; font-size:0.9rem;">${inv.date}</td>
+                    <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem;">${inv.date}</span></td>
                     <td style="text-align:right">${inv.customerName}</td>
-                    <td class="en-numbers-center" style="text-align:center;">${inv.total.toFixed(2)}</td>
-                    <td style="text-align:center;"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
-                    <td style="text-align:center;"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
+                    <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
+                    <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
+                    <td style="text-align:center"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
                 </tr>`;
             });
         }
         
         function viewInvoiceDetails(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
-            let itemsHtml = ''; inv.items.forEach(i => { itemsHtml += `<tr><td style="text-align:right">${i.name}</td><td class="en-numbers-center" style="text-align:center">${i.qty}</td><td class="en-numbers-center" style="text-align:center">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center" style="text-align:center">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
+            let itemsHtml = ''; inv.items.forEach(i => { itemsHtml += `<tr><td style="text-align:right; width:40%;">${i.name}</td><td style="text-align:center; width:20%;"><span class="en-numbers">${i.qty}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${parseFloat(i.price).toFixed(2)}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${(i.price*i.qty).toFixed(2)}</span></td></tr>`; });
             let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
 
             showModal(`
@@ -959,7 +957,7 @@
                     <span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.9rem;">${inv.status}</span>
                 </div>
                 <div class="grid grid-2" style="font-size:0.95rem; margin-bottom:20px;"><div><strong>العميل:</strong> ${inv.customerName}</div><div><strong>التاريخ:</strong> <span class="en-numbers" style="float:left;">${inv.date}</span></div></div>
-                <div class="table-responsive"><table style="font-size:0.9rem; margin-bottom:20px; min-width:100%;"><thead><tr><th style="text-align:right; width:40%;">الصنف</th><th style="text-align:center">الكمية</th><th style="text-align:center">السعر</th><th style="text-align:center">الإجمالي</th></tr></thead><tbody>${itemsHtml}</tbody></table></div>
+                <div class="table-responsive"><table style="font-size:0.9rem; margin-bottom:20px; width:100%;"><thead><tr><th style="text-align:right;">الصنف</th><th style="text-align:center;">الكمية</th><th style="text-align:center;">السعر</th><th style="text-align:center;">الإجمالي</th></tr></thead><tbody>${itemsHtml}</tbody></table></div>
                 <div class="card" style="background:rgba(0,0,0,0.02); padding:15px; font-size:0.95rem;">
                     <div class="flex" style="justify-content:space-between;"><span>المجموع الفرعي:</span> <span class="en-numbers">${inv.subtotal.toFixed(2)} SAR</span></div>
                     <div class="flex" style="justify-content:space-between; margin-top:5px;"><span>الخصم:</span> <span class="en-numbers">${inv.discountVal.toFixed(2)} SAR</span></div>
