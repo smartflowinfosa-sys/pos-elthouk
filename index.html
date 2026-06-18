@@ -39,7 +39,6 @@
         button { cursor: pointer; border: none; outline: none; font-family: inherit; }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); margin-bottom: 10px; }
         
-        /* ⚠️ إصلاح كلاسات الأرقام ⚠️ */
         .en-numbers { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
         .en-numbers-center { direction: ltr !important; text-align: center !important; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
         input[type="number"], input[type="date"], input[type="email"], input[type="password"] { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: block; width: 100%; }
@@ -136,7 +135,6 @@
         .cart-qty-btn { background: var(--border); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 1.1rem; }
 
         /* ================= Modals & Overlays ================= */
-        /* ⚠️ تعديل الـ z-index ليصبح 10000 ليغطي القائمة الجانبية بالكامل ⚠️ */
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 15px; }
         
         .modal { background: var(--card); padding: 25px; border-radius: 12px; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.25); }
@@ -154,7 +152,6 @@
         .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
 
         /* Cloud Sync Mini Loader */
-        /* تم رفع طبقة التنبيهات لتكون أعلى من النافذة المنبثقة */
         #cloud-loader { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #fff; padding: 8px 20px; border-radius: 50px; z-index: 10005; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.95rem; font-weight: bold; pointer-events: none; transition: opacity 0.3s ease; }
         .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -1035,21 +1032,55 @@
             logAction('طباعة', 'فاتورة', `طباعة الفاتورة رقم ${inv.invNumber}`); document.getElementById('print-view').classList.add('active-print'); window.print(); setTimeout(() => document.getElementById('print-view').classList.remove('active-print'), 1000);
         }
 
+        // ================= التحديث الجوهري لإرسال الفاتورة عبر الـ Webhook (VPS) =================
         function sendInvoiceWA(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
+            
             document.getElementById('print-store-name').innerText = db.settings.storeName; document.getElementById('print-vat-num').innerText = db.settings.vatNumber || '-'; document.getElementById('print-phone').innerText = db.settings.phone || '-'; document.getElementById('print-inv-num').innerText = inv.invNumber; document.getElementById('print-date').innerText = inv.date; document.getElementById('print-customer').innerText = inv.customerName; document.getElementById('print-status').innerText = inv.status; document.getElementById('print-cashier').innerText = inv.createdBy;
             const tbody = document.getElementById('print-items'); tbody.innerHTML = ''; inv.items.forEach(i => { tbody.innerHTML += `<tr><td style="text-align:right">${i.name}</td><td class="en-numbers-center">${i.qty}</td><td class="en-numbers-center">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
             document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); document.getElementById('print-discount').innerText = inv.discountVal.toFixed(2); document.getElementById('print-total').innerText = inv.total.toFixed(2);
             if(inv.status === 'مدفوع جزئيا') { document.getElementById('print-paid-row').style.display = 'block'; document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); } else { document.getElementById('print-paid-row').style.display = 'none'; }
+            
             const element = document.getElementById('print-view'); element.style.display = 'block'; element.style.position = 'absolute'; element.style.top = '-9999px';
-            const fileName = `${inv.customerName} - الذوق للمناسبات.pdf`; const opt = { margin: 10, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-            showLoading('جاري إنشاء PDF...');
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.style.display = 'none'; element.style.position = 'static'; element.style.top = 'auto'; hideLoading();
-                logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب`); showToast('تم التنزيل، جاري فتح الواتساب...');
+            const opt = { margin: 10, filename: 'invoice.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+            
+            showLoading('جاري تحضير الفاتورة وإرسالها للسيرفر...');
+            
+            // تحويل الـ PDF إلى نص (Base64) بدلاً من تحميله
+            html2pdf().set(opt).from(element).output('datauristring').then(async function (pdfBase64) {
+                element.style.display = 'none'; element.style.position = 'static'; element.style.top = 'auto'; 
+                
                 let phone = ''; if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
-                if(phone.startsWith('0')) phone = '966' + phone.substring(1); let text = `مرحبا ${inv.customerName}،\nشكرا لتعاملك مع ${db.settings.storeName}\n\n(الرجاء إرفاق الـ PDF هنا)`;
-                setTimeout(() => { window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank'); }, 1500);
+                if(phone.startsWith('0')) phone = '966' + phone.substring(1);
+                
+                try {
+                    // ⚠️ قم بتغيير هذا الرابط إلى رابط الـ Webhook الخاص بـ n8n على السيرفر الخاص بك ⚠️
+                    const webhookUrl = 'YOUR_N8N_WEBHOOK_URL_HERE';
+                    
+                    const response = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: phone,
+                            customerName: inv.customerName,
+                            invNumber: inv.invNumber,
+                            storeName: db.settings.storeName,
+                            pdfData: pdfBase64 // ملف الـ PDF كنص لتستقبله عقدة n8n
+                        })
+                    });
+
+                    hideLoading();
+                    if(response.ok) {
+                        logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`);
+                        showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!');
+                    } else {
+                        showToast('الرابط غير صحيح أو السيرفر لا يستجيب', 'error');
+                    }
+                } catch (error) {
+                    hideLoading();
+                    console.error(error);
+                    showToast('فشل الاتصال بسيرفر الأتمتة (VPS)', 'error');
+                }
             });
         }
 
