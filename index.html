@@ -1102,8 +1102,18 @@
                         await document.fonts.ready;
                     }
 
+                    // 🔍 ===== كود تشخيصي مؤقت — احذفه بعد انتهاء الفحص =====
+                    // يحفظ نسخة من نفس الفاتورة مباشرة على جهازك (تنزيل ملف) لمعاينتها بصرياً
+                    // بدون أي علاقة بـ n8n أو واتساب، لمعرفة هل المشكلة في توليد الـ PDF نفسه أو بعده
+                    await html2pdf().set(opt).from(element).save('test-invoice-debug.pdf');
+                    // ====================================================
+
                     // التقاط الشاشة وتحويلها لنص
                     const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
+
+                    // 🔍 سطر تشخيصي مؤقت إضافي: يطبع حجم البيانات في Console المتصفح
+                    console.log('🔍 تشخيص: طول بيانات PDF =', pdfBase64.length, 'حرف');
+                    console.log('🔍 تشخيص: أول 120 حرف =', pdfBase64.substring(0, 120));
 
                     // إخفاء القالب فوراً بعد الالتقاط ليعود الوضع طبيعياً (إعادة كل القيم التي عدّلناها)
                     element.style.display = 'none'; 
