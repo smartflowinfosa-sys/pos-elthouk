@@ -1036,6 +1036,16 @@
         async function sendInvoiceWA(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
             
+            // 🛑 جدار الحماية: التحقق من وجود رقم جوال قبل بدء أي عملية تصوير لتخفيف الضغط عن السيرفر 🛑
+            let phone = ''; 
+            if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
+            
+            if (!phone || phone.trim() === '') {
+                return showToast('لا يمكن الإرسال: هذا العميل لا يمتلك رقم جوال مسجل!', 'error');
+            }
+
+            if(phone.startsWith('0')) phone = '966' + phone.substring(1);
+
             // تعبئة البيانات في القالب المخفي
             document.getElementById('print-store-name').innerText = db.settings.storeName; 
             document.getElementById('print-vat-num').innerText = db.settings.vatNumber || '-'; 
@@ -1091,10 +1101,6 @@
                     element.style.top = 'auto';
                     element.style.left = 'auto';
                     
-                    let phone = ''; 
-                    if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
-                    if(phone.startsWith('0')) phone = '966' + phone.substring(1);
-                    
                     // ⚠️ الرابط الصحيح لمسار n8n ⚠️
                     const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
                     
@@ -1102,7 +1108,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            phone: phone,
+                            phone: phone, // المتغير الجاهز من الأعلى
                             customerName: inv.customerName,
                             invNumber: inv.invNumber,
                             storeName: db.settings.storeName,
