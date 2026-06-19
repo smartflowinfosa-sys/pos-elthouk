@@ -489,7 +489,7 @@
         </div>
         <h2 style="margin-bottom: 20px;" dir="rtl">فاتورة مبسطة</h2>
         <div style="text-align: right; margin-bottom: 20px; font-size:1.1rem;" dir="rtl">
-            <p>رقم الفاتورة: <strong id="print-inv-num" class="en-numbers"></strong></p>
+            <p>رقم الطلب: <strong id="print-inv-num" class="en-numbers"></strong></p>
             <p>التاريخ: <strong id="print-date" class="en-numbers"></strong></p>
             <p>العميل: <strong id="print-customer"></strong></p>
             <p>الحالة: <strong id="print-status"></strong></p>
@@ -1073,11 +1073,16 @@
             
             const element = document.getElementById('print-view'); 
             
-            // الحل الجذري لمشكلة الشاشة البيضاء: عرض العنصر بشكل مخفي عن المستخدم ولكنه مقروء للمتصفح
+            // ✅ الإصلاح: إبقاء العنصر داخل حدود الشاشة الفعلية (top:0, left:0) حتى يُرسم بشكل صحيح
+            // بواسطة html2canvas، مع إخفائه فعلياً عن المستخدم باستخدام طبقة خلفية (z-index سالب)
+            // وشفافية شبه كاملة (opacity) بدل دفعه لمسافة -9999px التي كانت تمنع المتصفح من رسمه أحياناً
             element.style.display = 'block'; 
             element.style.position = 'fixed'; 
-            element.style.top = '-9999px';
-            element.style.left = '-9999px';
+            element.style.top = '0';
+            element.style.left = '0';
+            element.style.zIndex = '-9999';
+            element.style.opacity = '0.01';
+            element.style.pointerEvents = 'none';
 
             const opt = { 
                 margin: 0, 
@@ -1092,14 +1097,22 @@
             // تأخير 200 ملي ثانية للسماح للمتصفح برسم محتويات الجدول (المنتجات) بشكل كامل قبل التصوير
             setTimeout(async () => {
                 try {
+                    // ✅ إضافة: التأكد من تحميل الخط (Tajawal) بالكامل قبل التصوير لتفادي أي مشاكل رسم نادرة
+                    if (document.fonts && document.fonts.ready) {
+                        await document.fonts.ready;
+                    }
+
                     // التقاط الشاشة وتحويلها لنص
                     const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
-                    // إخفاء القالب فوراً بعد الالتقاط ليعود الوضع طبيعياً
+                    // إخفاء القالب فوراً بعد الالتقاط ليعود الوضع طبيعياً (إعادة كل القيم التي عدّلناها)
                     element.style.display = 'none'; 
                     element.style.position = 'static'; 
                     element.style.top = 'auto';
                     element.style.left = 'auto';
+                    element.style.zIndex = 'auto';
+                    element.style.opacity = '1';
+                    element.style.pointerEvents = 'auto';
                     
                     // ⚠️ الرابط الصحيح لمسار n8n ⚠️
                     const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
@@ -1126,7 +1139,14 @@
                 } catch (error) {
                     hideLoading();
                     console.error(error);
+                    // ✅ إعادة كل القيم لوضعها الطبيعي أيضاً في حال حدوث خطأ
                     element.style.display = 'none';
+                    element.style.position = 'static';
+                    element.style.top = 'auto';
+                    element.style.left = 'auto';
+                    element.style.zIndex = 'auto';
+                    element.style.opacity = '1';
+                    element.style.pointerEvents = 'auto';
                     showToast('حدث خطأ أثناء التصوير أو الاتصال بالسيرفر', 'error');
                 }
             }, 200); // المهلة الزمنية لضمان عدم ظهور الشاشة البيضاء
