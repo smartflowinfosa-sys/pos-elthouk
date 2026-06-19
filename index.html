@@ -1033,28 +1033,69 @@
         }
 
         // ================= التحديث الجوهري لإرسال الفاتورة عبر الـ Webhook (VPS) =================
-        function sendInvoiceWA(id) {
+        async function sendInvoiceWA(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
             
-            document.getElementById('print-store-name').innerText = db.settings.storeName; document.getElementById('print-vat-num').innerText = db.settings.vatNumber || '-'; document.getElementById('print-phone').innerText = db.settings.phone || '-'; document.getElementById('print-inv-num').innerText = inv.invNumber; document.getElementById('print-date').innerText = inv.date; document.getElementById('print-customer').innerText = inv.customerName; document.getElementById('print-status').innerText = inv.status; document.getElementById('print-cashier').innerText = inv.createdBy;
-            const tbody = document.getElementById('print-items'); tbody.innerHTML = ''; inv.items.forEach(i => { tbody.innerHTML += `<tr><td style="text-align:right">${i.name}</td><td class="en-numbers-center">${i.qty}</td><td class="en-numbers-center">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
-            document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); document.getElementById('print-discount').innerText = inv.discountVal.toFixed(2); document.getElementById('print-total').innerText = inv.total.toFixed(2);
-            if(inv.status === 'مدفوع جزئيا') { document.getElementById('print-paid-row').style.display = 'block'; document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); } else { document.getElementById('print-paid-row').style.display = 'none'; }
+            // تعبئة البيانات في القالب المخفي
+            document.getElementById('print-store-name').innerText = db.settings.storeName; 
+            document.getElementById('print-vat-num').innerText = db.settings.vatNumber || '-'; 
+            document.getElementById('print-phone').innerText = db.settings.phone || '-'; 
+            document.getElementById('print-inv-num').innerText = inv.invNumber; 
+            document.getElementById('print-date').innerText = inv.date; 
+            document.getElementById('print-customer').innerText = inv.customerName; 
+            document.getElementById('print-status').innerText = inv.status; 
+            document.getElementById('print-cashier').innerText = inv.createdBy;
+
+            const tbody = document.getElementById('print-items'); 
+            tbody.innerHTML = ''; 
+            inv.items.forEach(i => { tbody.innerHTML += `<tr><td style="text-align:right">${i.name}</td><td class="en-numbers-center">${i.qty}</td><td class="en-numbers-center">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
+
+            document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); 
+            document.getElementById('print-discount').innerText = inv.discountVal.toFixed(2); 
+            document.getElementById('print-total').innerText = inv.total.toFixed(2);
+
+            if(inv.status === 'مدفوع جزئيا') { 
+                document.getElementById('print-paid-row').style.display = 'block'; 
+                document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); 
+            } else { 
+                document.getElementById('print-paid-row').style.display = 'none'; 
+            }
             
-            const element = document.getElementById('print-view'); element.style.display = 'block'; element.style.position = 'absolute'; element.style.top = '-9999px';
-            const opt = { margin: 10, filename: 'invoice.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+            const element = document.getElementById('print-view'); 
+            
+            // الحل الجذري لمشكلة الشاشة البيضاء: عرض العنصر بشكل مخفي عن المستخدم ولكنه مقروء للمتصفح
+            element.style.display = 'block'; 
+            element.style.position = 'fixed'; 
+            element.style.top = '-9999px';
+            element.style.left = '-9999px';
+
+            const opt = { 
+                margin: 0, 
+                filename: 'invoice.pdf', 
+                image: { type: 'jpeg', quality: 0.98 }, 
+                html2canvas: { scale: 2, useCORS: true }, 
+                jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' } 
+            };
             
             showLoading('جاري تحضير الفاتورة وإرسالها للسيرفر...');
             
-            // تحويل الـ PDF إلى نص (Base64) بدلاً من تحميله
-            html2pdf().set(opt).from(element).output('datauristring').then(async function (pdfBase64) {
-                element.style.display = 'none'; element.style.position = 'static'; element.style.top = 'auto'; 
-                
-                let phone = ''; if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
-                if(phone.startsWith('0')) phone = '966' + phone.substring(1);
-                
+            // تأخير 200 ملي ثانية للسماح للمتصفح برسم محتويات الجدول (المنتجات) بشكل كامل قبل التصوير
+            setTimeout(async () => {
                 try {
-                    // ⚠️ قم بتغيير هذا الرابط إلى رابط الـ Webhook الخاص بـ n8n على السيرفر الخاص بك ⚠️
+                    // التقاط الشاشة وتحويلها لنص
+                    const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
+
+                    // إخفاء القالب فوراً بعد الالتقاط ليعود الوضع طبيعياً
+                    element.style.display = 'none'; 
+                    element.style.position = 'static'; 
+                    element.style.top = 'auto';
+                    element.style.left = 'auto';
+                    
+                    let phone = ''; 
+                    if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
+                    if(phone.startsWith('0')) phone = '966' + phone.substring(1);
+                    
+                    // ⚠️ الرابط الصحيح لمسار n8n ⚠️
                     const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
                     
                     const response = await fetch(webhookUrl, {
@@ -1065,7 +1106,7 @@
                             customerName: inv.customerName,
                             invNumber: inv.invNumber,
                             storeName: db.settings.storeName,
-                            pdfData: pdfBase64 // ملف الـ PDF كنص لتستقبله عقدة n8n
+                            pdfData: pdfBase64 // ملف الـ PDF الممتلئ بالبيانات
                         })
                     });
 
@@ -1074,14 +1115,15 @@
                         logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`);
                         showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!');
                     } else {
-                        showToast('الرابط غير صحيح أو السيرفر لا يستجيب', 'error');
+                        showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error');
                     }
                 } catch (error) {
                     hideLoading();
                     console.error(error);
-                    showToast('فشل الاتصال بسيرفر الأتمتة (VPS)', 'error');
+                    element.style.display = 'none';
+                    showToast('حدث خطأ أثناء التصوير أو الاتصال بالسيرفر', 'error');
                 }
-            });
+            }, 200); // المهلة الزمنية لضمان عدم ظهور الشاشة البيضاء
         }
 
         // ================= POS Cart =================
