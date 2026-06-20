@@ -466,6 +466,10 @@
                             <label>الرقم الضريبي</label> <input type="text" id="set-vatNumber" class="en-numbers" style="text-align:right;">
                             <h3 class="card-header mt-3">المظهر</h3>
                             <select id="set-theme" onchange="applyThemeSetting()"><option value="light">Light - كريمي</option><option value="medium">Warm - طيني دافئ</option></select>
+                            <h3 class="card-header mt-3">شعار المتجر (للفاتورة)</h3>
+                            <input type="file" accept="image/*" id="set-logo" onchange="encodeStoreLogo(this)" style="padding:5px;">
+                            <img id="set-logo-preview" src="" style="width:90px; height:90px; object-fit:contain; margin-top:8px; border-radius:6px; display:none; background:#fff; border:1px solid var(--border); padding:4px;">
+                            <input type="hidden" id="set-logo-b64" value="">
                             <button class="btn btn-primary" style="margin-top:15px; width:100%;" onclick="saveSettings()">حفظ الإعدادات</button>
                         </div>
                         <div class="card">
@@ -1059,6 +1063,7 @@
                         storeName: db.settings.storeName,
                         vatNumber: db.settings.vatNumber || '',
                         storePhone: db.settings.phone || '',
+                        storeLogo: db.settings.logo || '',
                         date: inv.date,
                         status: inv.status,
                         items: inv.items,
@@ -1202,10 +1207,11 @@
         }
 
         // ================= Settings =================
-        function loadSettingsUI() { document.getElementById('set-storeName').value = db.settings.storeName; document.getElementById('set-phone').value = db.settings.phone || ''; document.getElementById('set-vatNumber').value = db.settings.vatNumber || ''; document.getElementById('set-theme').value = db.settings.theme; renderReorderList(); }
+        function loadSettingsUI() { document.getElementById('set-storeName').value = db.settings.storeName; document.getElementById('set-phone').value = db.settings.phone || ''; document.getElementById('set-vatNumber').value = db.settings.vatNumber || ''; document.getElementById('set-theme').value = db.settings.theme; document.getElementById('set-logo-b64').value = db.settings.logo || ''; const logoPrev = document.getElementById('set-logo-preview'); if(db.settings.logo) { logoPrev.src = db.settings.logo; logoPrev.style.display = 'block'; } else { logoPrev.style.display = 'none'; } renderReorderList(); }
+        function encodeStoreLogo(input) { const f = input.files[0]; if(f) { const r = new FileReader(); r.onload = e => { document.getElementById('set-logo-preview').src = e.target.result; document.getElementById('set-logo-preview').style.display = 'block'; document.getElementById('set-logo-b64').value = e.target.result; }; r.readAsDataURL(f); } }
         function renderReorderList() { const list = document.getElementById('reorder-nav-list'); list.innerHTML = ''; db.settings.navOrder.forEach((key, index) => { list.innerHTML += `<li class="reorder-item"><span><i class="fas ${navDict[key].icon}" style="margin-left:5px;"></i> ${navDict[key].label}</span><div><button class="icon-btn" onclick="moveNav(${index}, -1)" ${index===0?'disabled style="opacity:0.3"':''}><i class="fas fa-arrow-up"></i></button><button class="icon-btn" onclick="moveNav(${index}, 1)" ${index===db.settings.navOrder.length-1?'disabled style="opacity:0.3"':''}><i class="fas fa-arrow-down"></i></button></div></li>`; }); }
         async function moveNav(idx, dir) { const arr = db.settings.navOrder; if(idx+dir < 0 || idx+dir >= arr.length) return; const temp = arr[idx]; arr[idx] = arr[idx+dir]; arr[idx+dir] = temp; renderReorderList(); showLoading(); await supabaseClient.from('thawq_settings').update({nav_order: arr}).eq('id', 1); hideLoading(); }
-        async function saveSettings() { const dataObj = { phone: document.getElementById('set-phone').value, vat_number: document.getElementById('set-vatNumber').value, theme: document.getElementById('set-theme').value }; showLoading(); await supabaseClient.from('thawq_settings').update(dataObj).eq('id', 1); db.settings.phone = dataObj.phone; db.settings.vatNumber = dataObj.vat_number; db.settings.theme = dataObj.theme; logAction('تعديل', 'إعدادات', `تغيير إعدادات المتجر`); applyThemeSetting(); renderSidebar(); hideLoading(); showToast('تم الحفظ'); }
+        async function saveSettings() { const dataObj = { phone: document.getElementById('set-phone').value, vat_number: document.getElementById('set-vatNumber').value, theme: document.getElementById('set-theme').value, logo: document.getElementById('set-logo-b64').value }; showLoading(); await supabaseClient.from('thawq_settings').update(dataObj).eq('id', 1); db.settings.phone = dataObj.phone; db.settings.vatNumber = dataObj.vat_number; db.settings.theme = dataObj.theme; db.settings.logo = dataObj.logo; logAction('تعديل', 'إعدادات', `تغيير إعدادات المتجر`); applyThemeSetting(); renderSidebar(); hideLoading(); showToast('تم الحفظ'); }
         function applyThemeSetting() { applyTheme(document.getElementById('set-theme').value); }
 
         // ================= Boot & PWA Init =================
