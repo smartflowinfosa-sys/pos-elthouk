@@ -9,11 +9,12 @@
     <meta name="theme-color" content="#8B3A2A">
     <link rel="apple-touch-icon" href="icon-192.png?v=4">
     
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         /* ================= Theme Variables ================= */
@@ -172,10 +173,9 @@
             #app-view, #login-view, #cloud-loader { display: none !important; }
         }
         
-        #print-view, #expense-print-view { display: none; text-align: center; max-width: 800px; margin: 0 auto; background: white; color: black; padding: 20px; }
+        #print-view, #expense-print-view { display: none; margin: 0 auto; }
         #print-view.active-print, #expense-print-view.active-print { display: block; }
-        .invoice-print-header { border-bottom: 2px dashed #000; padding-bottom: 20px; margin-bottom: 20px; }
-        .invoice-print-table th, .invoice-print-table td { border: 1px solid #000; padding: 8px; }
+        .invoice-print-table th, .invoice-print-table td { padding: 8px; }
 
         /* Syslogs Custom Styling */
         .syslog-row { border-bottom: 1px solid var(--border); padding: 12px 15px; display: flex; flex-direction: column; gap: 8px; background: var(--card); }
@@ -461,15 +461,19 @@
                     <div class="grid grid-2">
                         <div class="card">
                             <h3 class="card-header">إعدادات المتجر</h3>
-                            <label>اسم المتجر</label> <input type="text" id="set-storeName" disabled title="لا يمكن تغييره">
+                            
+                            <label>شعار المتجر (Logo)</label>
+                            <input type="file" accept="image/*" onchange="encodeLogo(this)" style="padding:5px;">
+                            <img id="set-logo-preview" src="" style="width:80px; height:80px; object-fit:contain; margin-top:5px; display:none; border:1px solid var(--border); border-radius:8px;">
+                            <input type="hidden" id="set-logo-b64">
+                            
+                            <label style="margin-top:10px; display:block;">اسم المتجر</label> 
+                            <input type="text" id="set-storeName" disabled title="لا يمكن تغييره">
                             <label>الجوال</label> <input type="text" id="set-phone" class="en-numbers" style="text-align:right;">
                             <label>الرقم الضريبي</label> <input type="text" id="set-vatNumber" class="en-numbers" style="text-align:right;">
+                            
                             <h3 class="card-header mt-3">المظهر</h3>
                             <select id="set-theme" onchange="applyThemeSetting()"><option value="light">Light - كريمي</option><option value="medium">Warm - طيني دافئ</option></select>
-                            <h3 class="card-header mt-3">شعار المتجر (للفاتورة)</h3>
-                            <input type="file" accept="image/*" id="set-logo" onchange="encodeStoreLogo(this)" style="padding:5px;">
-                            <img id="set-logo-preview" src="" style="width:90px; height:90px; object-fit:contain; margin-top:8px; border-radius:6px; display:none; background:#fff; border:1px solid var(--border); padding:4px;">
-                            <input type="hidden" id="set-logo-b64" value="">
                             <button class="btn btn-primary" style="margin-top:15px; width:100%;" onclick="saveSettings()">حفظ الإعدادات</button>
                         </div>
                         <div class="card">
@@ -484,44 +488,52 @@
         </div>
     </div>
 
-    <div id="print-view">
-        <div class="invoice-print-header" dir="rtl">
-            <h1 id="print-store-name" style="font-family: 'Tajawal', sans-serif;">الذوق للمناسبات</h1>
-            <p>الرقم الضريبي: <span id="print-vat-num" class="en-numbers"></span></p>
-            <p>الجوال: <span id="print-phone" class="en-numbers"></span></p>
+    <div id="print-view" style="background-color: #FDF8F4; border: 3px solid #8B3A2A; padding: 15px; border-radius: 8px; width: 280px; margin: 0 auto; color: #8B3A2A; box-sizing: border-box; font-family: 'Tajawal', sans-serif;">
+        <div dir="rtl" style="border-bottom: 2px dashed #8B3A2A; padding-bottom: 15px; margin-bottom: 15px; text-align: center;">
+            <img id="print-logo" src="" alt="Logo" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 10px; display: none; border-radius: 50%; border: 2px solid #8B3A2A;">
+            <h1 id="print-store-name" style="margin: 0; font-size: 1.4rem; color: #8B3A2A; font-weight: bold;">الذوق للمناسبات</h1>
         </div>
-        <h2 style="margin-bottom: 20px;" dir="rtl">فاتورة مبسطة</h2>
-        <div style="text-align: right; margin-bottom: 20px; font-size:1.1rem;" dir="rtl">
-            <p>رقم الطلب: <strong id="print-inv-num" class="en-numbers"></strong></p>
-            <p>التاريخ: <strong id="print-date" class="en-numbers"></strong></p>
-            <p>العميل: <strong id="print-customer"></strong></p>
-            <p>الحالة: <strong id="print-status"></strong></p>
+        
+        <h2 style="margin-bottom: 15px; font-size: 1.1rem; text-align: center; color: #8B3A2A;" dir="rtl">فاتورة طلب</h2>
+        
+        <div style="text-align: right; margin-bottom: 20px; font-size:0.95rem; line-height: 1.8; color: #333;" dir="rtl">
+            <p style="margin:0;"><strong>رقم الطلب:</strong> <span id="print-inv-num" class="en-numbers" style="color: #8B3A2A; font-weight: bold; float: left;"></span></p>
+            <p style="margin:0;"><strong>التاريخ:</strong> <span id="print-date" class="en-numbers" style="float: left;"></span></p>
+            <p style="margin:0;"><strong>الوقت:</strong> <span id="print-time" class="en-numbers" style="float: left;"></span></p>
+            <div style="border-top: 1px dashed #E2D5C8; margin: 10px 0;"></div>
+            <p style="margin:0;"><strong>العميل:</strong> <span id="print-customer" style="float: left;"></span></p>
+            <p style="margin:0;"><strong>الجوال:</strong> <span id="print-phone" class="en-numbers" style="float: left;"></span></p>
+            <p style="margin:0;"><strong>الحالة:</strong> <span id="print-status" style="float: left;"></span></p>
         </div>
-        <table class="invoice-print-table" style="width:100%; text-align:center;" dir="rtl">
+        
+        <table style="width:100%; text-align:center; border-collapse: collapse; margin-bottom: 15px; font-size:0.9rem;" dir="rtl">
             <thead>
-                <tr>
-                    <th style="text-align:right">الصنف</th>
-                    <th style="text-align:center">الكمية</th>
-                    <th style="text-align:center">السعر</th>
-                    <th style="text-align:center">الإجمالي</th>
+                <tr style="background-color: rgba(139, 58, 42, 0.1); color: #8B3A2A;">
+                    <th style="text-align:right; border-bottom: 2px solid #8B3A2A; padding: 6px;">الصنف</th>
+                    <th style="text-align:center; border-bottom: 2px solid #8B3A2A; padding: 6px;">الكمية</th>
+                    <th style="text-align:center; border-bottom: 2px solid #8B3A2A; padding: 6px;">السعر</th>
+                    <th style="text-align:center; border-bottom: 2px solid #8B3A2A; padding: 6px;">الإجمالي</th>
                 </tr>
             </thead>
-            <tbody id="print-items"></tbody>
+            <tbody id="print-items" style="color: #333;"></tbody>
         </table>
-        <div style="text-align: right; margin-top: 20px; font-size:1.1rem;" dir="rtl">
-            <p>المجموع الفرعي: <span id="print-subtotal" class="en-numbers"></span> SAR</p>
-            <p>الخصم: <span id="print-discount" class="en-numbers"></span> SAR</p>
-            <p id="print-paid-row" style="display:none; color:var(--text-muted);">المبلغ المدفوع: <span id="print-paid-amount" class="en-numbers"></span> SAR</p>
-            <h3 style="margin-top:10px;">المجموع الكلي: <span id="print-total" class="en-numbers"></span> SAR</h3>
+        
+        <div style="text-align: right; margin-top: 15px; font-size:0.95rem; color: #333;" dir="rtl">
+            <p style="margin:5px 0;">المجموع الفرعي: <span id="print-subtotal" class="en-numbers" style="float: left;"></span></p>
+            <p id="print-paid-row" style="display:none; color:var(--warning); margin:5px 0;">المبلغ المدفوع: <span id="print-paid-amount" class="en-numbers" style="float: left;"></span></p>
+            <div style="background-color: rgba(139, 58, 42, 0.1); padding: 10px; border-radius: 6px; margin-top: 15px;">
+                <h3 style="margin:0; color: #8B3A2A; display: flex; justify-content: space-between;"><span>الإجمالي:</span> <span class="en-numbers"><span id="print-total"></span> SAR</span></h3>
+            </div>
         </div>
-        <div style="margin-top: 40px; text-align: center;" dir="rtl">
-            <p id="print-thanks">شكرا لاختياركم متجر الذوق للمناسبات</p>
-            <p style="font-size:0.9rem; margin-top:10px; color:var(--text-muted);">بواسطة: <strong id="print-cashier"></strong></p>
+        
+        <div style="margin-top: 25px; text-align: center; color: #8B3A2A;" dir="rtl">
+            <p id="print-thanks" style="font-weight: bold; margin:0;">شكراً لزيارتكم! ✨</p>
+            <p style="font-size:0.85rem; margin-top:5px; color: #8B3A2A;">كاشير: <strong id="print-cashier"></strong></p>
         </div>
     </div>
 
     <div id="expense-print-view" dir="rtl">
-        <div class="invoice-print-header">
+        <div class="invoice-print-header" style="border-bottom: 2px dashed #000; padding-bottom: 20px; margin-bottom: 20px;">
             <h1 style="font-family: 'Tajawal', sans-serif;">الذوق للمناسبات</h1>
             <h2 style="margin:10px 0;">تقرير المصروفات</h2>
             <p style="font-size:1.1rem;">الفترة: <strong id="exp-print-period" class="en-numbers"></strong></p>
@@ -619,7 +631,6 @@
             }
         }
 
-        // ================= Audit Log Function (Syslogs) =================
         async function logAction(actionType, entity, details) {
             if(!currentUser) return;
             const logEntry = { user_name: currentUser.name || currentUser.username, action_type: actionType, entity: entity, details: details };
@@ -678,7 +689,6 @@
             });
         }
 
-        // ================= Mobile Sidebar Toggle =================
         function toggleSidebar(show = null) {
             const sidebar = document.getElementById('sidebar');
             if (show === true) { sidebar.classList.add('active'); } 
@@ -705,7 +715,6 @@
             return { invNum, dateStr };
         }
 
-        // ================= Direct Login Logic =================
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault(); const u = document.getElementById('login-user').value.trim(); const p = document.getElementById('login-pass').value;
             const user = db.users.find(x => x.username === u && x.pass === p && x.active);
@@ -756,7 +765,6 @@
             if(id==='users') renderUsers(); if(id==='syslogs') fetchAndRenderSyslogs(); if(id==='settings') loadSettingsUI();
         }
 
-        // ================= Dashboard =================
         function renderDashboard() {
             const total = db.invoices.reduce((s,i)=>s+i.total,0); const totalDisc = db.invoices.reduce((s,i)=>s+(i.discountVal||0),0);
             document.getElementById('dash-total-sales').innerText = total.toFixed(2) + ' SAR'; document.getElementById('dash-inv-count').innerText = db.invoices.length;
@@ -764,7 +772,6 @@
             if(charts.sales) charts.sales.destroy(); charts.sales = new Chart(document.getElementById('salesChart').getContext('2d'), { type: 'bar', data: { labels: ['إجمالي المبيعات'], datasets: [{ label:'مبيعات', data:[total], backgroundColor:'#8B3A2A' }] } });
         }
 
-        // ================= Performance Dashboard =================
         function renderPerformance() {
             const filter = document.getElementById('perf-date-filter').value; const now = new Date();
             let filteredInvoices = db.invoices.filter(inv => {
@@ -791,7 +798,6 @@
             db.settings.breakEvenTarget = val; logAction('تعديل', 'إعدادات', `تعديل هدف التكلفة إلى ${val}`); hideLoading(); renderPerformance(); showToast('تم تحديث هدف التكلفة بنجاح');
         }
 
-        // ================= Expenses Module =================
         function toggleExpCustomDate() { document.getElementById('exp-custom-date-container').classList.toggle('hidden', document.getElementById('exp-time-filter').value !== 'custom'); renderExpensesDashboard(); }
         function renderExpenses() { renderExpensesTable(); renderExpensesDashboard(); }
 
@@ -892,7 +898,6 @@
             logAction('طباعة', 'مصروفات', 'طباعة تقرير المصروفات'); closeModal(); document.getElementById('expense-print-view').classList.add('active-print'); window.print(); setTimeout(() => document.getElementById('expense-print-view').classList.remove('active-print'), 1000);
         }
         
-        // ================= Categories & Products =================
         function openCategoriesModal() {
             let rows = ''; db.categories.forEach(c => { rows += `<tr><td>${c.nameAr}</td><td style="text-align:center;"><button class="btn btn-outline" style="padding:2px 5px;" onclick="editCategory(${c.id}, '${c.nameAr}')">تعديل</button> <button class="btn btn-danger" style="padding:2px 5px;" onclick="delCategory(${c.id})">حذف</button></td></tr>`; });
             showModal(`
@@ -951,7 +956,6 @@
 
         async function deleteProduct(id) { if(confirm('تأكيد الحذف؟')) { showLoading(); await supabaseClient.from('thawq_products').delete().eq('id', id); db.products = db.products.filter(p => p.id !== id); logAction('حذف', 'صنف', `حذف صنف من النظام`); hideLoading(); renderProducts(); showToast('تم الحذف'); } }
 
-        // ================= Invoices =================
         function renderInvoices() {
             const tbody = document.querySelector('#invoices-table tbody'); tbody.innerHTML = ''; const search = document.getElementById('inv-search').value.toLowerCase();
             db.invoices.filter(i => i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search))).forEach(inv => {
@@ -1025,17 +1029,65 @@
             }
         }
 
+        // ================= تحديث شكل فاتورة الطباعة العادية =================
         function printInvoice(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
-            document.getElementById('print-store-name').innerText = db.settings.storeName; document.getElementById('print-vat-num').innerText = db.settings.vatNumber || '-'; document.getElementById('print-phone').innerText = db.settings.phone || '-'; document.getElementById('print-inv-num').innerText = inv.invNumber; document.getElementById('print-date').innerText = inv.date; document.getElementById('print-customer').innerText = inv.customerName; document.getElementById('print-status').innerText = inv.status;
+            
+            let phone = ''; 
+            if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
+            
+            // تنسيق التاريخ والوقت
+            let dateStr = inv.date;
+            let timeStr = '';
+            if(inv.date.includes(' ')) {
+                const parts = inv.date.split(' ');
+                if(parts.length >= 5) {
+                    dateStr = `${parts[0]} ${parts[1].substring(0,3)} ${parts[2]}`; // مثال: 21 Jun 2026
+                    timeStr = `${parts[3]} ${parts[4]}`;
+                }
+            }
+
+            document.getElementById('print-store-name').innerText = db.settings.storeName; 
+            
+            const logoImg = document.getElementById('print-logo');
+            if(db.settings.logo) {
+                logoImg.src = db.settings.logo;
+                logoImg.style.display = 'inline-block';
+            } else {
+                logoImg.style.display = 'none';
+            }
+
+            document.getElementById('print-inv-num').innerText = inv.invNumber; 
+            document.getElementById('print-date').innerText = dateStr; 
+            document.getElementById('print-time').innerText = timeStr; 
+            document.getElementById('print-customer').innerText = inv.customerName; 
+            document.getElementById('print-phone').innerText = phone || '-'; 
+            document.getElementById('print-status').innerText = inv.status; 
             document.getElementById('print-cashier').innerText = inv.createdBy;
-            const tbody = document.getElementById('print-items'); tbody.innerHTML = ''; inv.items.forEach(i => { tbody.innerHTML += `<tr><td style="text-align:right">${i.name}</td><td class="en-numbers-center">${i.qty}</td><td class="en-numbers-center">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
-            document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); document.getElementById('print-discount').innerText = inv.discountVal.toFixed(2); document.getElementById('print-total').innerText = inv.total.toFixed(2);
-            if(inv.status === 'مدفوع جزئيا') { document.getElementById('print-paid-row').style.display = 'block'; document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); } else { document.getElementById('print-paid-row').style.display = 'none'; }
-            logAction('طباعة', 'فاتورة', `طباعة الفاتورة رقم ${inv.invNumber}`); document.getElementById('print-view').classList.add('active-print'); window.print(); setTimeout(() => document.getElementById('print-view').classList.remove('active-print'), 1000);
+
+            const tbody = document.getElementById('print-items'); 
+            tbody.innerHTML = ''; 
+            inv.items.forEach(i => { 
+                tbody.innerHTML += `<tr style="border-bottom: 1px solid #E2D5C8;"><td style="text-align:right; padding:6px;">${i.name}</td><td class="en-numbers-center" style="padding:6px;">${i.qty}</td><td class="en-numbers-center" style="padding:6px;">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center" style="padding:6px; font-weight:bold;">${(i.price*i.qty).toFixed(2)}</td></tr>`; 
+            });
+
+            document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); 
+            document.getElementById('print-total').innerText = inv.total.toFixed(2);
+
+            if(inv.status === 'مدفوع جزئيا') { 
+                document.getElementById('print-paid-row').style.display = 'block'; 
+                document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); 
+            } else { 
+                document.getElementById('print-paid-row').style.display = 'none'; 
+            }
+            
+            logAction('طباعة', 'فاتورة', `طباعة الفاتورة رقم ${inv.invNumber}`); 
+            document.getElementById('print-view').classList.add('active-print'); 
+            window.print(); 
+            setTimeout(() => document.getElementById('print-view').classList.remove('active-print'), 1000);
         }
 
-        // ================= إرسال الفاتورة عبر الـ Webhook (يتم بناء PDF في n8n عبر Gotenberg) =================
+        // ================= إرسال الفاتورة بالتصميم الجديد عبر n8n =================
         async function sendInvoiceWA(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
             
@@ -1046,50 +1098,109 @@
                 return showToast('لا يمكن الإرسال: هذا العميل لا يمتلك رقم جوال مسجل!', 'error');
             }
 
-            if(phone.startsWith('0')) phone = '966' + phone.substring(1);
+            let waPhone = phone;
+            if(waPhone.startsWith('0')) waPhone = '966' + waPhone.substring(1);
 
-            showLoading('جاري إرسال بيانات الفاتورة للسيرفر...');
-
-            try {
-                const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
-                
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: phone,
-                        customerName: inv.customerName,
-                        invNumber: inv.invNumber,
-                        storeName: db.settings.storeName,
-                        vatNumber: db.settings.vatNumber || '',
-                        storePhone: db.settings.phone || '',
-                        storeLogo: db.settings.logo || '',
-                        date: inv.date,
-                        status: inv.status,
-                        items: inv.items,
-                        subtotal: inv.subtotal,
-                        discountVal: inv.discountVal,
-                        total: inv.total,
-                        paidAmount: inv.paidAmount !== undefined ? inv.paidAmount : inv.total,
-                        cashier: inv.createdBy
-                    })
-                });
-
-                hideLoading();
-                if(response.ok) {
-                    logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`);
-                    showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!');
-                } else {
-                    showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error');
+            // فصل التاريخ والوقت
+            let dateStr = inv.date;
+            let timeStr = '';
+            if(inv.date.includes(' ')) {
+                const parts = inv.date.split(' ');
+                if(parts.length >= 5) {
+                    dateStr = `${parts[0]} ${parts[1].substring(0,3)} ${parts[2]}`; // 21 Jun 2026
+                    timeStr = `${parts[3]} ${parts[4]}`;
                 }
-            } catch (error) {
-                hideLoading();
-                console.error(error);
-                showToast('حدث خطأ أثناء الاتصال بالسيرفر', 'error');
             }
+
+            document.getElementById('print-store-name').innerText = db.settings.storeName; 
+            
+            const logoImg = document.getElementById('print-logo');
+            if(db.settings.logo) {
+                logoImg.src = db.settings.logo;
+                logoImg.style.display = 'inline-block';
+            } else {
+                logoImg.style.display = 'none';
+            }
+
+            document.getElementById('print-inv-num').innerText = inv.invNumber; 
+            document.getElementById('print-date').innerText = dateStr; 
+            document.getElementById('print-time').innerText = timeStr; 
+            document.getElementById('print-customer').innerText = inv.customerName; 
+            document.getElementById('print-phone').innerText = phone; 
+            document.getElementById('print-status').innerText = inv.status; 
+            document.getElementById('print-cashier').innerText = inv.createdBy;
+
+            const tbody = document.getElementById('print-items'); 
+            tbody.innerHTML = ''; 
+            inv.items.forEach(i => { 
+                tbody.innerHTML += `<tr style="border-bottom: 1px solid #E2D5C8;"><td style="text-align:right; padding:6px;">${i.name}</td><td class="en-numbers-center" style="padding:6px;">${i.qty}</td><td class="en-numbers-center" style="padding:6px;">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center" style="padding:6px; font-weight:bold;">${(i.price*i.qty).toFixed(2)}</td></tr>`; 
+            });
+
+            document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); 
+            document.getElementById('print-total').innerText = inv.total.toFixed(2);
+
+            if(inv.status === 'مدفوع جزئيا') { 
+                document.getElementById('print-paid-row').style.display = 'block'; 
+                document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); 
+            } else { 
+                document.getElementById('print-paid-row').style.display = 'none'; 
+            }
+            
+            const element = document.getElementById('print-view'); 
+            
+            element.style.display = 'block'; 
+            element.style.position = 'absolute'; 
+            element.style.top = '0';
+            element.style.left = '0';
+            element.style.zIndex = '-9999'; 
+
+            const opt = { 
+                margin: 0, 
+                filename: 'invoice.pdf', 
+                image: { type: 'jpeg', quality: 0.98 }, 
+                html2canvas: { scale: 2, useCORS: true, windowWidth: 320 }, 
+                jsPDF: { unit: 'mm', format: [85, 200], orientation: 'portrait' } 
+            };
+            
+            showLoading('جاري تحضير الفاتورة وإرسالها للسيرفر...');
+            
+            setTimeout(async () => {
+                try {
+                    const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
+
+                    element.style.display = 'none'; 
+                    element.style.zIndex = '1';
+                    
+                    const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
+                    
+                    const response = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: waPhone, // رقم الواتساب المنسق
+                            customerName: inv.customerName,
+                            invNumber: inv.invNumber,
+                            storeName: db.settings.storeName,
+                            pdfData: pdfBase64 
+                        })
+                    });
+
+                    hideLoading();
+                    if(response.ok) {
+                        logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`);
+                        showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!');
+                    } else {
+                        showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error');
+                    }
+                } catch (error) {
+                    hideLoading();
+                    console.error(error);
+                    element.style.display = 'none';
+                    showToast('حدث خطأ أثناء التصوير أو الاتصال بالسيرفر', 'error');
+                }
+            }, 400); 
         }
 
-        // ================= POS Cart =================
         let posCart = [];
         function openPOSModal() {
             posCart = []; let custOpts = ''; db.customers.forEach(c => custOpts += `<option value="${c.id}">${c.name} ${c.phone?'- '+c.phone:''}</option>`);
@@ -1119,7 +1230,6 @@
             logAction('إضافة', 'فاتورة', `إصدار فاتورة جديدة رقم ${meta.invNum} للعميل ${cleanCustName} بقيمة ${t.total.toFixed(2)}`); hideLoading(); closeModal(); renderInvoices(); showToast('تم الإصدار');
         }
 
-        // ================= Customers =================
         function renderCustomers() {
             const grid = document.getElementById('customers-grid'); grid.innerHTML = ''; const search = document.getElementById('cust-search').value.toLowerCase();
             db.customers.filter(c=>c.name.toLowerCase().includes(search) || c.phone.includes(search)).forEach(c => { grid.innerHTML += `<div class="card clickable-row" onclick="viewCustomerDetails(${c.id})"><h3 style="color:var(--primary)">${c.name}</h3><p class="en-numbers" style="text-align:right; margin-top:5px;"><i class="fas fa-phone"></i> ${c.phone||'-'}</p><div style="font-size:0.8rem; color:var(--text-muted); margin-top:10px;"><i class="fas fa-user-circle"></i> ${c.createdBy}</div></div>`; });
@@ -1177,7 +1287,6 @@
             if(confirm('تأكيد الحذف النهائي؟')) { const c = db.customers.find(x => x.id === id); showLoading(); await supabaseClient.from('thawq_customers').delete().eq('id', id); db.customers = db.customers.filter(x => x.id !== id); logAction('حذف', 'عميل', `قام الموظف بحذف العميل: ${c ? c.name : id}`); hideLoading(); renderCustomers(); closeModal(); showToast('تم الحذف'); }
         }
 
-        // ================= Direct Database Users Management =================
         function renderUsers() {
             const tbody = document.querySelector('#users-table tbody'); tbody.innerHTML = '';
             db.users.forEach(u => { tbody.innerHTML += `<tr><td style="text-align:right">${u.name}</td><td class="en-numbers" style="text-align:right">${u.username}</td><td style="text-align:center">${u.active?'فعال':'معطل'}</td><td style="text-align:center"><button class="icon-btn-solid warning" onclick="openUserModal(${u.id})" style="display:inline-flex;"><i class="fas fa-edit"></i></button></td></tr>`; });
@@ -1206,15 +1315,61 @@
             hideLoading(); closeModal(); renderUsers(); if(currentUser && d.username === currentUser.username) { currentUser = db.users.find(u=>u.username===d.username); sessionStorage.setItem('thawq_session', JSON.stringify(currentUser)); renderSidebar(); } showToast('تم الحفظ');
         }
 
-        // ================= Settings =================
-        function loadSettingsUI() { document.getElementById('set-storeName').value = db.settings.storeName; document.getElementById('set-phone').value = db.settings.phone || ''; document.getElementById('set-vatNumber').value = db.settings.vatNumber || ''; document.getElementById('set-theme').value = db.settings.theme; document.getElementById('set-logo-b64').value = db.settings.logo || ''; const logoPrev = document.getElementById('set-logo-preview'); if(db.settings.logo) { logoPrev.src = db.settings.logo; logoPrev.style.display = 'block'; } else { logoPrev.style.display = 'none'; } renderReorderList(); }
-        function encodeStoreLogo(input) { const f = input.files[0]; if(f) { const r = new FileReader(); r.onload = e => { document.getElementById('set-logo-preview').src = e.target.result; document.getElementById('set-logo-preview').style.display = 'block'; document.getElementById('set-logo-b64').value = e.target.result; }; r.readAsDataURL(f); } }
+        // ================= Settings & Logo Upload =================
+        function loadSettingsUI() { 
+            document.getElementById('set-storeName').value = db.settings.storeName; 
+            document.getElementById('set-phone').value = db.settings.phone || ''; 
+            document.getElementById('set-vatNumber').value = db.settings.vatNumber || ''; 
+            document.getElementById('set-theme').value = db.settings.theme; 
+            
+            document.getElementById('set-logo-b64').value = db.settings.logo || '';
+            if(db.settings.logo) {
+                document.getElementById('set-logo-preview').src = db.settings.logo;
+                document.getElementById('set-logo-preview').style.display = 'block';
+            } else {
+                document.getElementById('set-logo-preview').style.display = 'none';
+            }
+            
+            renderReorderList(); 
+        }
+
+        function encodeLogo(input) { 
+            const f = input.files[0]; 
+            if(f) { 
+                const r = new FileReader(); 
+                r.onload = e => { 
+                    document.getElementById('set-logo-preview').src = e.target.result; 
+                    document.getElementById('set-logo-preview').style.display = 'block'; 
+                    document.getElementById('set-logo-b64').value = e.target.result; 
+                }; 
+                r.readAsDataURL(f); 
+            } 
+        }
+
         function renderReorderList() { const list = document.getElementById('reorder-nav-list'); list.innerHTML = ''; db.settings.navOrder.forEach((key, index) => { list.innerHTML += `<li class="reorder-item"><span><i class="fas ${navDict[key].icon}" style="margin-left:5px;"></i> ${navDict[key].label}</span><div><button class="icon-btn" onclick="moveNav(${index}, -1)" ${index===0?'disabled style="opacity:0.3"':''}><i class="fas fa-arrow-up"></i></button><button class="icon-btn" onclick="moveNav(${index}, 1)" ${index===db.settings.navOrder.length-1?'disabled style="opacity:0.3"':''}><i class="fas fa-arrow-down"></i></button></div></li>`; }); }
         async function moveNav(idx, dir) { const arr = db.settings.navOrder; if(idx+dir < 0 || idx+dir >= arr.length) return; const temp = arr[idx]; arr[idx] = arr[idx+dir]; arr[idx+dir] = temp; renderReorderList(); showLoading(); await supabaseClient.from('thawq_settings').update({nav_order: arr}).eq('id', 1); hideLoading(); }
-        async function saveSettings() { const dataObj = { phone: document.getElementById('set-phone').value, vat_number: document.getElementById('set-vatNumber').value, theme: document.getElementById('set-theme').value, logo: document.getElementById('set-logo-b64').value }; showLoading(); await supabaseClient.from('thawq_settings').update(dataObj).eq('id', 1); db.settings.phone = dataObj.phone; db.settings.vatNumber = dataObj.vat_number; db.settings.theme = dataObj.theme; db.settings.logo = dataObj.logo; logAction('تعديل', 'إعدادات', `تغيير إعدادات المتجر`); applyThemeSetting(); renderSidebar(); hideLoading(); showToast('تم الحفظ'); }
+        
+        async function saveSettings() { 
+            const dataObj = { 
+                phone: document.getElementById('set-phone').value, 
+                vat_number: document.getElementById('set-vatNumber').value, 
+                theme: document.getElementById('set-theme').value,
+                logo: document.getElementById('set-logo-b64').value // حفظ الشعار في القاعدة
+            }; 
+            showLoading(); 
+            await supabaseClient.from('thawq_settings').update(dataObj).eq('id', 1); 
+            db.settings.phone = dataObj.phone; 
+            db.settings.vatNumber = dataObj.vat_number; 
+            db.settings.theme = dataObj.theme; 
+            db.settings.logo = dataObj.logo; 
+            logAction('تعديل', 'إعدادات', `تغيير إعدادات المتجر`); 
+            applyThemeSetting(); 
+            renderSidebar(); 
+            hideLoading(); 
+            showToast('تم الحفظ بنجاح'); 
+        }
         function applyThemeSetting() { applyTheme(document.getElementById('set-theme').value); }
 
-        // ================= Boot & PWA Init =================
         window.onload = async () => {
             showLoading('جاري المزامنة...'); await initDB(); let isLoggedIn = false;
             if(sessionStorage.getItem('thawq_session')) {
