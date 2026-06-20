@@ -9,8 +9,8 @@
     <meta name="theme-color" content="#8B3A2A">
     <link rel="apple-touch-icon" href="icon-192.png?v=4">
     
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1073,19 +1073,18 @@
             
             const element = document.getElementById('print-view'); 
             
-            // 🔍 ===== اختبار تشخيصي حاسم مؤقت =====
-            // أزلنا مؤقتاً كل تقنيات الإخفاء (fixed/absolute/zIndex) لنتأكد هل html2canvas
-            // يستطيع تصوير هذا العنصر أصلاً عندما يكون ظاهراً بشكل طبيعي تماماً على الشاشة.
-            // ستظهر الفاتورة لمدة لحظات على الشاشة قبل الإرسال — هذا متوقع فقط في هذا الاختبار.
+            // إخفاء العنصر عن المستخدم بشكل طبيعي (الإخفاء بالموضع لم يكن سبب المشكلة أصلاً —
+            // المشكلة كانت في عدم وجود crossorigin على روابط CSS الخارجية، وتم إصلاحها في <head>)
             element.style.display = 'block'; 
-            element.scrollIntoView();
-            // ====================================
+            element.style.position = 'fixed'; 
+            element.style.top = '-9999px';
+            element.style.left = '-9999px';
 
             const opt = { 
                 margin: 0, 
                 filename: 'invoice.pdf', 
                 image: { type: 'jpeg', quality: 0.98 }, 
-                html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 }, 
+                html2canvas: { scale: 2, useCORS: true }, 
                 jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' } 
             };
             
@@ -1094,28 +1093,18 @@
             // تأخير 200 ملي ثانية للسماح للمتصفح برسم محتويات الجدول (المنتجات) بشكل كامل قبل التصوير
             setTimeout(async () => {
                 try {
-                    // ✅ التأكد من تحميل الخط (Tajawal) بالكامل قبل التصوير
+                    // التأكد من تحميل الخط (Tajawal) بالكامل قبل التصوير
                     if (document.fonts && document.fonts.ready) {
                         await document.fonts.ready;
                     }
 
-                    // 🔍 تسجيل تفصيلي لحالة العنصر لحظة التصوير (مهم جداً لمعرفة السبب)
-                    const rect = element.getBoundingClientRect();
-                    console.log('🔍 طول محتوى HTML الداخلي =', element.innerHTML.length, 'حرف');
-                    console.log('🔍 offsetWidth/offsetHeight =', element.offsetWidth, 'x', element.offsetHeight);
-                    console.log('🔍 getBoundingClientRect =', JSON.stringify(rect));
-                    console.log('🔍 display المحسوب =', window.getComputedStyle(element).display);
-                    console.log('🔍 عدد صفوف الجدول =', document.getElementById('print-items').children.length);
-
-                    // 🔍 ===== كود تشخيصي مؤقت — احذفه بعد انتهاء الفحص =====
+                    // 🔍 تأكيد أخير مؤقت: يحفظ نسخة محلية لمعاينتها بصرياً — احذف هذا السطر بعد التأكد من نجاح الحل
                     await html2pdf().set(opt).from(element).save('test-invoice-debug.pdf');
-                    // ====================================================
 
                     // التقاط الشاشة وتحويلها لنص
                     const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
-                    console.log('🔍 تشخيص: طول بيانات PDF =', pdfBase64.length, 'حرف');
-                    console.log('🔍 تشخيص: أول 120 حرف =', pdfBase64.substring(0, 120));
+                    console.log('🔍 طول بيانات PDF =', pdfBase64.length, 'حرف (يجب أن يكون رقماً كبيراً الآن، آلاف الأحرف)');
 
                     // إخفاء القالب فوراً بعد الالتقاط ليعود الوضع طبيعياً (إعادة كل القيم التي عدّلناها)
                     element.style.display = 'none'; 
