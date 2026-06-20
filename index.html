@@ -1073,22 +1073,19 @@
             
             const element = document.getElementById('print-view'); 
             
-            // ✅ الإصلاح: إبقاء العنصر داخل حدود الشاشة الفعلية (top:0, left:0) حتى يُرسم بشكل صحيح
-            // بواسطة html2canvas، مع إخفائه فعلياً عن المستخدم باستخدام طبقة خلفية (z-index سالب)
-            // وشفافية شبه كاملة (opacity) بدل دفعه لمسافة -9999px التي كانت تمنع المتصفح من رسمه أحياناً
+            // 🔍 ===== اختبار تشخيصي حاسم مؤقت =====
+            // أزلنا مؤقتاً كل تقنيات الإخفاء (fixed/absolute/zIndex) لنتأكد هل html2canvas
+            // يستطيع تصوير هذا العنصر أصلاً عندما يكون ظاهراً بشكل طبيعي تماماً على الشاشة.
+            // ستظهر الفاتورة لمدة لحظات على الشاشة قبل الإرسال — هذا متوقع فقط في هذا الاختبار.
             element.style.display = 'block'; 
-            element.style.position = 'fixed'; 
-            element.style.top = '0';
-            element.style.left = '0';
-            element.style.zIndex = '-9999';
-            element.style.opacity = '0.01';
-            element.style.pointerEvents = 'none';
+            element.scrollIntoView();
+            // ====================================
 
             const opt = { 
                 margin: 0, 
                 filename: 'invoice.pdf', 
                 image: { type: 'jpeg', quality: 0.98 }, 
-                html2canvas: { scale: 2, useCORS: true }, 
+                html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 }, 
                 jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' } 
             };
             
@@ -1097,21 +1094,26 @@
             // تأخير 200 ملي ثانية للسماح للمتصفح برسم محتويات الجدول (المنتجات) بشكل كامل قبل التصوير
             setTimeout(async () => {
                 try {
-                    // ✅ إضافة: التأكد من تحميل الخط (Tajawal) بالكامل قبل التصوير لتفادي أي مشاكل رسم نادرة
+                    // ✅ التأكد من تحميل الخط (Tajawal) بالكامل قبل التصوير
                     if (document.fonts && document.fonts.ready) {
                         await document.fonts.ready;
                     }
 
+                    // 🔍 تسجيل تفصيلي لحالة العنصر لحظة التصوير (مهم جداً لمعرفة السبب)
+                    const rect = element.getBoundingClientRect();
+                    console.log('🔍 طول محتوى HTML الداخلي =', element.innerHTML.length, 'حرف');
+                    console.log('🔍 offsetWidth/offsetHeight =', element.offsetWidth, 'x', element.offsetHeight);
+                    console.log('🔍 getBoundingClientRect =', JSON.stringify(rect));
+                    console.log('🔍 display المحسوب =', window.getComputedStyle(element).display);
+                    console.log('🔍 عدد صفوف الجدول =', document.getElementById('print-items').children.length);
+
                     // 🔍 ===== كود تشخيصي مؤقت — احذفه بعد انتهاء الفحص =====
-                    // يحفظ نسخة من نفس الفاتورة مباشرة على جهازك (تنزيل ملف) لمعاينتها بصرياً
-                    // بدون أي علاقة بـ n8n أو واتساب، لمعرفة هل المشكلة في توليد الـ PDF نفسه أو بعده
                     await html2pdf().set(opt).from(element).save('test-invoice-debug.pdf');
                     // ====================================================
 
                     // التقاط الشاشة وتحويلها لنص
                     const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
-                    // 🔍 سطر تشخيصي مؤقت إضافي: يطبع حجم البيانات في Console المتصفح
                     console.log('🔍 تشخيص: طول بيانات PDF =', pdfBase64.length, 'حرف');
                     console.log('🔍 تشخيص: أول 120 حرف =', pdfBase64.substring(0, 120));
 
@@ -1121,8 +1123,6 @@
                     element.style.top = 'auto';
                     element.style.left = 'auto';
                     element.style.zIndex = 'auto';
-                    element.style.opacity = '1';
-                    element.style.pointerEvents = 'auto';
                     
                     // ⚠️ الرابط الصحيح لمسار n8n ⚠️
                     const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
@@ -1155,8 +1155,6 @@
                     element.style.top = 'auto';
                     element.style.left = 'auto';
                     element.style.zIndex = 'auto';
-                    element.style.opacity = '1';
-                    element.style.pointerEvents = 'auto';
                     showToast('حدث خطأ أثناء التصوير أو الاتصال بالسيرفر', 'error');
                 }
             }, 200); // المهلة الزمنية لضمان عدم ظهور الشاشة البيضاء
