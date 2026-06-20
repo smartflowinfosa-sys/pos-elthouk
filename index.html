@@ -14,7 +14,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         /* ================= Theme Variables ================= */
@@ -1032,11 +1031,10 @@
             logAction('طباعة', 'فاتورة', `طباعة الفاتورة رقم ${inv.invNumber}`); document.getElementById('print-view').classList.add('active-print'); window.print(); setTimeout(() => document.getElementById('print-view').classList.remove('active-print'), 1000);
         }
 
-        // ================= التحديث الجوهري لإرسال الفاتورة عبر الـ Webhook (VPS) =================
+        // ================= إرسال الفاتورة عبر الـ Webhook (يتم بناء PDF في n8n عبر Gotenberg) =================
         async function sendInvoiceWA(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
             
-            // 🛑 جدار الحماية: التحقق من وجود رقم جوال قبل بدء أي عملية تصوير لتخفيف الضغط عن السيرفر 🛑
             let phone = ''; 
             if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
             
@@ -1046,110 +1044,44 @@
 
             if(phone.startsWith('0')) phone = '966' + phone.substring(1);
 
-            // تعبئة البيانات في القالب المخفي
-            document.getElementById('print-store-name').innerText = db.settings.storeName; 
-            document.getElementById('print-vat-num').innerText = db.settings.vatNumber || '-'; 
-            document.getElementById('print-phone').innerText = db.settings.phone || '-'; 
-            document.getElementById('print-inv-num').innerText = inv.invNumber; 
-            document.getElementById('print-date').innerText = inv.date; 
-            document.getElementById('print-customer').innerText = inv.customerName; 
-            document.getElementById('print-status').innerText = inv.status; 
-            document.getElementById('print-cashier').innerText = inv.createdBy;
+            showLoading('جاري إرسال بيانات الفاتورة للسيرفر...');
 
-            const tbody = document.getElementById('print-items'); 
-            tbody.innerHTML = ''; 
-            inv.items.forEach(i => { tbody.innerHTML += `<tr><td style="text-align:right">${i.name}</td><td class="en-numbers-center">${i.qty}</td><td class="en-numbers-center">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
+            try {
+                const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
+                
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: phone,
+                        customerName: inv.customerName,
+                        invNumber: inv.invNumber,
+                        storeName: db.settings.storeName,
+                        vatNumber: db.settings.vatNumber || '',
+                        storePhone: db.settings.phone || '',
+                        date: inv.date,
+                        status: inv.status,
+                        items: inv.items,
+                        subtotal: inv.subtotal,
+                        discountVal: inv.discountVal,
+                        total: inv.total,
+                        paidAmount: inv.paidAmount !== undefined ? inv.paidAmount : inv.total,
+                        cashier: inv.createdBy
+                    })
+                });
 
-            document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); 
-            document.getElementById('print-discount').innerText = inv.discountVal.toFixed(2); 
-            document.getElementById('print-total').innerText = inv.total.toFixed(2);
-
-            if(inv.status === 'مدفوع جزئيا') { 
-                document.getElementById('print-paid-row').style.display = 'block'; 
-                document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); 
-            } else { 
-                document.getElementById('print-paid-row').style.display = 'none'; 
-            }
-            
-            const element = document.getElementById('print-view'); 
-            
-            // إخفاء العنصر عن المستخدم بشكل طبيعي (الإخفاء بالموضع لم يكن سبب المشكلة أصلاً —
-            // المشكلة كانت في عدم وجود crossorigin على روابط CSS الخارجية، وتم إصلاحها في <head>)
-            element.style.display = 'block'; 
-            element.style.position = 'fixed'; 
-            element.style.top = '-9999px';
-            element.style.left = '-9999px';
-
-            const opt = { 
-                margin: 0, 
-                filename: 'invoice.pdf', 
-                image: { type: 'jpeg', quality: 0.98 }, 
-                html2canvas: { scale: 2, useCORS: true }, 
-                jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' } 
-            };
-            
-            showLoading('جاري تحضير الفاتورة وإرسالها للسيرفر... [نسخة فحص v4]');
-            
-            // تأخير 200 ملي ثانية للسماح للمتصفح برسم محتويات الجدول (المنتجات) بشكل كامل قبل التصوير
-            setTimeout(async () => {
-                try {
-                    // التأكد من تحميل الخط (Tajawal) بالكامل قبل التصوير
-                    if (document.fonts && document.fonts.ready) {
-                        await document.fonts.ready;
-                    }
-
-                    // 🔍 تأكيد أخير مؤقت: يحفظ نسخة محلية لمعاينتها بصرياً
-                    await html2pdf().set(opt).from(element).save('test-invoice-debug.pdf');
-
-                    // التقاط الشاشة وتحويلها لنص
-                    const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
-
-                    // 🔍 تنبيه مباشر على الشاشة (لا يحتاج DevTools) — يظهر لك حجم بيانات الفاتورة فوراً
-                    alert('🔍 تشخيص:\nطول بيانات PDF = ' + pdfBase64.length + ' حرف\n\nإذا كان الرقم صغيراً جداً (أقل من 2000) فالمشكلة في التصوير.\nإذا كان كبيراً (عشرات/مئات الآلاف) فالفاتورة تتولد صحيحة والمشكلة بعد ذلك.');
-                    console.log('🔍 طول بيانات PDF =', pdfBase64.length, 'حرف');
-
-                    // إخفاء القالب فوراً بعد الالتقاط ليعود الوضع طبيعياً (إعادة كل القيم التي عدّلناها)
-                    element.style.display = 'none'; 
-                    element.style.position = 'static'; 
-                    element.style.top = 'auto';
-                    element.style.left = 'auto';
-                    element.style.zIndex = 'auto';
-                    
-                    // ⚠️ الرابط الصحيح لمسار n8n ⚠️
-                    const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
-                    
-                    const response = await fetch(webhookUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            phone: phone, // المتغير الجاهز من الأعلى
-                            customerName: inv.customerName,
-                            invNumber: inv.invNumber,
-                            storeName: db.settings.storeName,
-                            pdfData: pdfBase64 // ملف الـ PDF الممتلئ بالبيانات
-                        })
-                    });
-
-                    hideLoading();
-                    if(response.ok) {
-                        logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`);
-                        showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!');
-                    } else {
-                        showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error');
-                    }
-                } catch (error) {
-                    hideLoading();
-                    console.error(error);
-                    // 🔍 إظهار نص الخطأ الحقيقي مباشرة على الشاشة (بدون أي أدوات مطور)
-                    alert('⚠️ حدث خطأ فعلي أثناء توليد الفاتورة:\n\n' + (error && error.message ? error.message : error) + '\n\n' + (error && error.stack ? error.stack.substring(0, 300) : ''));
-                    element.style.display = 'none';
-                    element.style.position = 'static';
-                    element.style.top = 'auto';
-                    element.style.left = 'auto';
-                    element.style.zIndex = 'auto';
-                    showToast('حدث خطأ أثناء التصوير أو الاتصال بالسيرفر', 'error');
+                hideLoading();
+                if(response.ok) {
+                    logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`);
+                    showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!');
+                } else {
+                    showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error');
                 }
-            }, 200); // المهلة الزمنية لضمان عدم ظهور الشاشة البيضاء
+            } catch (error) {
+                hideLoading();
+                console.error(error);
+                showToast('حدث خطأ أثناء الاتصال بالسيرفر', 'error');
+            }
         }
 
         // ================= POS Cart =================
