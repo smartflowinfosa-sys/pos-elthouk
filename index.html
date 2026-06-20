@@ -1088,7 +1088,7 @@
                 jsPDF: { unit: 'mm', format: [80, 200], orientation: 'portrait' } 
             };
             
-            showLoading('جاري تحضير الفاتورة وإرسالها للسيرفر...');
+            showLoading('جاري تحضير الفاتورة وإرسالها للسيرفر... [نسخة فحص v4]');
             
             // تأخير 200 ملي ثانية للسماح للمتصفح برسم محتويات الجدول (المنتجات) بشكل كامل قبل التصوير
             setTimeout(async () => {
@@ -1098,13 +1098,15 @@
                         await document.fonts.ready;
                     }
 
-                    // 🔍 تأكيد أخير مؤقت: يحفظ نسخة محلية لمعاينتها بصرياً — احذف هذا السطر بعد التأكد من نجاح الحل
+                    // 🔍 تأكيد أخير مؤقت: يحفظ نسخة محلية لمعاينتها بصرياً
                     await html2pdf().set(opt).from(element).save('test-invoice-debug.pdf');
 
                     // التقاط الشاشة وتحويلها لنص
                     const pdfBase64 = await html2pdf().set(opt).from(element).outputPdf('datauristring');
 
-                    console.log('🔍 طول بيانات PDF =', pdfBase64.length, 'حرف (يجب أن يكون رقماً كبيراً الآن، آلاف الأحرف)');
+                    // 🔍 تنبيه مباشر على الشاشة (لا يحتاج DevTools) — يظهر لك حجم بيانات الفاتورة فوراً
+                    alert('🔍 تشخيص:\nطول بيانات PDF = ' + pdfBase64.length + ' حرف\n\nإذا كان الرقم صغيراً جداً (أقل من 2000) فالمشكلة في التصوير.\nإذا كان كبيراً (عشرات/مئات الآلاف) فالفاتورة تتولد صحيحة والمشكلة بعد ذلك.');
+                    console.log('🔍 طول بيانات PDF =', pdfBase64.length, 'حرف');
 
                     // إخفاء القالب فوراً بعد الالتقاط ليعود الوضع طبيعياً (إعادة كل القيم التي عدّلناها)
                     element.style.display = 'none'; 
@@ -1138,7 +1140,8 @@
                 } catch (error) {
                     hideLoading();
                     console.error(error);
-                    // ✅ إعادة كل القيم لوضعها الطبيعي أيضاً في حال حدوث خطأ
+                    // 🔍 إظهار نص الخطأ الحقيقي مباشرة على الشاشة (بدون أي أدوات مطور)
+                    alert('⚠️ حدث خطأ فعلي أثناء توليد الفاتورة:\n\n' + (error && error.message ? error.message : error) + '\n\n' + (error && error.stack ? error.stack.substring(0, 300) : ''));
                     element.style.display = 'none';
                     element.style.position = 'static';
                     element.style.top = 'auto';
