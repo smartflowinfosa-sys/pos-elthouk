@@ -381,7 +381,8 @@
                                 <thead>
                                     <tr>
                                         <th style="text-align:right">رقم الفاتورة</th>
-                                        <th style="text-align:right">التاريخ</th>
+                                        <th style="text-align:right">تاريخ الإصدار</th>
+                                        <th style="text-align:right">وقت الخدمة</th>
                                         <th style="text-align:right">العميل</th>
                                         <th style="text-align:center">المجموع</th>
                                         <th style="text-align:center">الحالة</th>
@@ -957,9 +958,13 @@
             db.invoices.filter(i => i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search))).forEach(inv => {
                 let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
                 
+                // إضافة وقت الخدمة وتنسيقه ليظهر في الجدول
+                let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
+
                 tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
                     <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
-                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem;">${inv.date}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${inv.date.split(' ')[0]}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem; font-weight:bold; color:var(--primary); background: rgba(139, 58, 42, 0.05); padding: 4px 8px; border-radius: 4px;">${sTime}</span></td>
                     <td style="text-align:right">${inv.customerName}</td>
                     <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
                     <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
@@ -972,6 +977,9 @@
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
             let itemsHtml = ''; inv.items.forEach(i => { itemsHtml += `<tr><td style="text-align:right; width:40%;">${i.name}</td><td style="text-align:center; width:20%;"><span class="en-numbers">${i.qty}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${parseFloat(i.price).toFixed(2)}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${(i.price*i.qty).toFixed(2)}</span></td></tr>`; });
             let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
+            
+            // إضافة وقت الخدمة لبطاقة تفاصيل الفاتورة
+            let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
 
             showModal(`
                 <div class="flex" style="justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
@@ -981,7 +989,13 @@
                     </div>
                     <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="grid grid-2" style="font-size:0.95rem; margin-bottom:20px;"><div><strong>العميل:</strong> ${inv.customerName}</div><div><strong>التاريخ:</strong> <span class="en-numbers" style="float:left;">${inv.date}</span></div></div>
+                
+                <div class="grid grid-3" style="font-size:0.95rem; margin-bottom:20px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px;">
+                    <div><strong>العميل:</strong> <br>${inv.customerName}</div>
+                    <div><strong>تاريخ الإصدار:</strong> <br><span class="en-numbers" style="float:left;">${inv.date}</span></div>
+                    <div><strong style="color:var(--primary);">وقت الخدمة:</strong> <br><span class="en-numbers" style="float:left; font-weight:bold;">${sTime}</span></div>
+                </div>
+
                 <div class="table-responsive"><table style="font-size:0.9rem; margin-bottom:20px; width:100%;"><thead><tr><th style="text-align:right;">الصنف</th><th style="text-align:center;">الكمية</th><th style="text-align:center;">السعر</th><th style="text-align:center;">الإجمالي</th></tr></thead><tbody>${itemsHtml}</tbody></table></div>
                 <div class="card" style="background:rgba(0,0,0,0.02); padding:15px; font-size:0.95rem;">
                     <div class="flex" style="justify-content:space-between;"><span>المجموع الفرعي:</span> <span class="en-numbers">${inv.subtotal.toFixed(2)} SAR</span></div>
@@ -1213,7 +1227,7 @@
 
             showModal(`
                 <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
-                    <h3 style="color:var(--primary); margin:0;">ملف العميل: ${c.name}</h3>
+                    <h3 style="color:var(--primary); margin:0;">مل ملف العميل: ${c.name}</h3>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <div style="display:flex; gap:5px;"><button class="icon-btn-solid warning" onclick="openCustomerModal(${c.id})"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteCustomer(${c.id})"><i class="fas fa-trash"></i></button>` : ''}</div>
                         <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
