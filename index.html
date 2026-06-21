@@ -466,7 +466,10 @@
                             <label style="margin-top:10px; display:block;">اسم المتجر</label> 
                             <input type="text" id="set-storeName" disabled title="لا يمكن تغييره">
                             <label>الجوال</label> <input type="text" id="set-phone" class="en-numbers" style="text-align:right;">
-                            <label>الرقم الضريبي</label> <input type="text" id="set-vatNumber" class="en-numbers" style="text-align:right;">
+                            
+                            <div style="display:none;">
+                                <label>الرقم الضريبي</label> <input type="text" id="set-vatNumber" class="en-numbers" style="text-align:right;">
+                            </div>
                             
                             <h3 class="card-header mt-3">المظهر</h3>
                             <select id="set-theme" onchange="applyThemeSetting()"><option value="light">Light - كريمي</option><option value="medium">Warm - طيني دافئ</option></select>
@@ -1083,7 +1086,7 @@
             setTimeout(() => document.getElementById('print-view').classList.remove('active-print'), 1000);
         }
 
-        // ================= إرسال الفاتورة (واتساب PDF) =================
+        // ================= إرسال الفاتورة (واتساب PDF) عبر المسار الجديد V2 =================
         async function sendInvoiceWA(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
             
@@ -1167,7 +1170,8 @@
                     element.style.display = 'none'; 
                     element.style.zIndex = '1';
                     
-                    const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
+                    // ⚠️ الرابط الجديد الذي طلبته للمسار التجريبي V2 ⚠️
+                    const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice-v2';
                     
                     const response = await fetch(webhookUrl, {
                         method: 'POST',
