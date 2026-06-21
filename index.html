@@ -40,7 +40,7 @@
         
         .en-numbers { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
         .en-numbers-center { direction: ltr !important; text-align: center !important; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
-        input[type="number"], input[type="date"], input[type="email"], input[type="password"] { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: block; width: 100%; }
+        input[type="number"], input[type="date"], input[type="datetime-local"], input[type="email"], input[type="password"] { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: block; width: 100%; }
 
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
@@ -600,7 +600,7 @@
                 if(catsRes.data) db.categories = catsRes.data.map(c => ({ id: c.id, nameAr: c.name_ar }));
                 if(prodsRes.data) db.products = prodsRes.data.map(p => ({ id: p.id, nameAr: p.name_ar, catId: p.cat_id, price: p.price, active: p.active, image: p.image, createdBy: p.created_by || 'غير محدد' }));
                 if(custsRes.data) db.customers = custsRes.data.map(c => ({ id: c.id, name: c.name, phone: c.phone, address1: c.address1, address2: c.address2, notes: c.notes, createdBy: c.created_by || 'غير محدد' }));
-                if(invsRes.data) db.invoices = invsRes.data.map(i => ({ id: i.id, invNumber: i.inv_number, date: i.date, customerId: i.customer_id, customerName: i.customer_name, items: i.items, subtotal: i.subtotal, discountVal: i.discount_val, total: i.total, status: i.status, paidAmount: i.paid_amount, createdBy: i.created_by || 'غير محدد' }));
+                if(invsRes.data) db.invoices = invsRes.data.map(i => ({ id: i.id, invNumber: i.inv_number, date: i.date, serviceTime: i.service_time, customerId: i.customer_id, customerName: i.customer_name, items: i.items, subtotal: i.subtotal, discountVal: i.discount_val, total: i.total, status: i.status, paidAmount: i.paid_amount, createdBy: i.created_by || 'غير محدد' }));
                 if(expRes.data) db.expenses = expRes.data.map(e => ({ id: e.id, date: e.date, type: e.type, category: e.category, customCategory: e.custom_category, amount: e.amount, method: e.method, notes: e.notes, image: e.image, createdBy: e.created_by || 'غير محدد' }));
                 
                 applyTheme(db.settings.theme);
@@ -1092,16 +1092,55 @@
         // ================= POS Cart =================
         let posCart = [];
         function openPOSModal() {
-            posCart = []; let custOpts = ''; db.customers.forEach(c => custOpts += `<option value="${c.id}">${c.name} ${c.phone?'- '+c.phone:''}</option>`);
+            posCart = []; 
+            let custOpts = ''; db.customers.forEach(c => custOpts += `<option value="${c.id}">${c.name} ${c.phone?'- '+c.phone:''}</option>`);
             let catOpts = '<option value="all">كل الفئات</option>'; db.categories.forEach(c => catOpts += `<option value="${c.id}">${c.nameAr}</option>`);
+            
+            // 🌟 توليد الوقت الحالي ليكون هو الافتراضي في مربع وقت الخدمة
+            let now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            let currentDateTime = now.toISOString().slice(0,16);
+
             showModal(`
             <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
                 <h3 style="color:var(--primary); margin:0;">سلة المبيعات (POS)</h3>
                 <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
             </div>
-            <div style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;"><select id="pos-cust" style="flex:1; min-width:200px;">${custOpts}</select><select id="pos-cat-filter-modal" style="width:150px; cursor:pointer;" onchange="renderPOSProductsModal()">${catOpts}</select></div><div class="pos-container"><div class="pos-products" id="pos-products-grid"></div><div class="pos-cart"><div class="cart-items" id="pos-cart-items"></div><div style="font-size:0.9rem;"><div class="flex" style="justify-content:space-between;"><span>المجموع:</span> <span id="pos-sub" class="en-numbers">0</span></div><div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;"><span>الخصم (%):</span> <input type="number" id="pos-disc" class="en-numbers" style="width:60px; padding:5px; margin:0; text-align:center;" value="0" min="0" max="100" onkeyup="updateCartTotals()" onchange="updateCartTotals()"></div><hr style="margin:10px 0; border-top:1px solid var(--border);"><div class="flex" style="justify-content:space-between; font-weight:bold; font-size:1.2rem; color:var(--primary);"><span>الإجمالي:</span> <span id="pos-total" class="en-numbers">0</span></div><button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="checkout()">إصدار الفاتورة</button><button class="btn btn-outline" style="width:100%; margin-top:5px;" onclick="closeModal()">إلغاء</button></div></div></div>`, 'modal-lg');
+            
+            <div style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
+                <select id="pos-cust" style="flex:1; min-width:200px;">${custOpts}</select>
+                <select id="pos-cat-filter-modal" style="width:150px; cursor:pointer;" onchange="renderPOSProductsModal()">${catOpts}</select>
+            </div>
+            
+            <div class="pos-container">
+                <div class="pos-products" id="pos-products-grid"></div>
+                <div class="pos-cart">
+                    <div class="cart-items" id="pos-cart-items"></div>
+                    <div style="font-size:0.9rem;">
+                        
+                        <div style="background: rgba(139, 58, 42, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border);">
+                            <label style="font-size:0.85rem; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">تاريخ ووقت الخدمة (لرسالة التقييم):</label>
+                            <input type="datetime-local" id="pos-service-time" class="en-numbers" value="${currentDateTime}" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%;">
+                        </div>
+
+                        <div class="flex" style="justify-content:space-between;"><span>المجموع:</span> <span id="pos-sub" class="en-numbers">0</span></div>
+                        <div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;">
+                            <span>الخصم (%):</span> 
+                            <input type="number" id="pos-disc" class="en-numbers" style="width:60px; padding:5px; margin:0; text-align:center;" value="0" min="0" max="100" onkeyup="updateCartTotals()" onchange="updateCartTotals()">
+                        </div>
+                        <hr style="margin:10px 0; border-top:1px solid var(--border);">
+                        <div class="flex" style="justify-content:space-between; font-weight:bold; font-size:1.2rem; color:var(--primary);">
+                            <span>الإجمالي:</span> <span id="pos-total" class="en-numbers">0</span>
+                        </div>
+                        <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="checkout()">إصدار الفاتورة</button>
+                        <button class="btn btn-outline" style="width:100%; margin-top:5px;" onclick="closeModal()">إلغاء</button>
+                    </div>
+                </div>
+            </div>`, 'modal-lg');
+            
             renderPOSProductsModal(); updateCartTotals();
         }
+        
         function renderPOSProductsModal() { const grid = document.getElementById('pos-products-grid'); const filter = document.getElementById('pos-cat-filter-modal').value; grid.innerHTML = ''; db.products.filter(p => p.active && (filter === 'all' || p.catId == filter)).forEach(p => { const img = p.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; grid.innerHTML += `<div class="pos-item-card" onclick="addToCart(${p.id}, '${p.nameAr}', ${p.price})"><img src="${img}" class="pos-item-img"><div class="pos-item-info"><strong>${p.nameAr}</strong><br><span style="color:var(--primary)" class="en-numbers">${p.price} SAR</span></div></div>`; }); }
         function addToCart(id, name, price) { const ex = posCart.find(i => i.id === id); if(ex) ex.qty++; else posCart.push({ id, name, price, qty: 1 }); renderCart(); }
         function changeQty(id, d) { const item = posCart.find(i => i.id === id); if(item) { item.qty += d; if(item.qty <= 0) posCart = posCart.filter(i => i.id !== id); renderCart(); } }
@@ -1109,14 +1148,55 @@
         function updateCartTotals() { const sub = posCart.reduce((s,i)=>s+(i.price*i.qty),0); const discInput = document.getElementById('pos-disc'); const discPercent = parseFloat(discInput ? discInput.value : 0) || 0; const discVal = sub * (discPercent / 100); const total = Math.max(0, sub - discVal); if(document.getElementById('pos-sub')) { document.getElementById('pos-sub').innerText = sub.toFixed(2); document.getElementById('pos-total').innerText = total.toFixed(2); } return { sub, discVal, total }; }
 
         async function checkout() {
-            if(posCart.length === 0) return showToast('السلة فارغة', 'error'); const t = updateCartTotals(); const custSel = document.getElementById('pos-cust'); if(!custSel.value) return showToast('يجب اختيار عميل', 'error');
-            const meta = generateInvoiceMeta(); let custRawText = custSel.options[custSel.selectedIndex].text; let cleanCustName = custRawText.split(' -')[0].trim();
+            if(posCart.length === 0) return showToast('السلة فارغة', 'error'); 
+            const t = updateCartTotals(); 
+            const custSel = document.getElementById('pos-cust'); 
+            if(!custSel.value) return showToast('يجب اختيار عميل', 'error');
+            
+            // 🌟 استخراج وقت الخدمة من الواجهة 🌟
+            const serviceTime = document.getElementById('pos-service-time').value;
+
+            const meta = generateInvoiceMeta(); 
+            let custRawText = custSel.options[custSel.selectedIndex].text; 
+            let cleanCustName = custRawText.split(' -')[0].trim();
             const userName = currentUser.name || currentUser.username;
-            const dataObj = { inv_number: meta.invNum, date: meta.dateStr, customer_id: parseInt(custSel.value), customer_name: cleanCustName, items: posCart, subtotal: t.sub, discount_val: t.discVal, total: t.total, status: 'مدفوع بالكامل', paid_amount: t.total, created_by: userName };
+            
+            const dataObj = { 
+                inv_number: meta.invNum, 
+                date: meta.dateStr, 
+                service_time: serviceTime, // إرسال الوقت لقاعدة البيانات
+                customer_id: parseInt(custSel.value), 
+                customer_name: cleanCustName, 
+                items: posCart, 
+                subtotal: t.sub, 
+                discount_val: t.discVal, 
+                total: t.total, 
+                status: 'مدفوع بالكامل', 
+                paid_amount: t.total, 
+                created_by: userName 
+            };
+            
             showLoading('جاري إصدار الفاتورة...');
             const { data } = await supabaseClient.from('thawq_invoices').insert([dataObj]).select();
-            if(data && data[0]) { db.invoices.unshift({ id: data[0].id, invNumber: data[0].inv_number, date: data[0].date, customerId: data[0].customer_id, customerName: data[0].customer_name, items: data[0].items, subtotal: data[0].subtotal, discountVal: data[0].discount_val, total: data[0].total, status: data[0].status, paidAmount: data[0].paid_amount, createdBy: userName }); }
-            logAction('إضافة', 'فاتورة', `إصدار فاتورة جديدة رقم ${meta.invNum} للعميل ${cleanCustName} بقيمة ${t.total.toFixed(2)}`); hideLoading(); closeModal(); renderInvoices(); showToast('تم الإصدار');
+            if(data && data[0]) { 
+                db.invoices.unshift({ 
+                    id: data[0].id, 
+                    invNumber: data[0].inv_number, 
+                    date: data[0].date, 
+                    serviceTime: data[0].service_time, // الإضافة للذاكرة المحلية
+                    customerId: data[0].customer_id, 
+                    customerName: data[0].customer_name, 
+                    items: data[0].items, 
+                    subtotal: data[0].subtotal, 
+                    discountVal: data[0].discount_val, 
+                    total: data[0].total, 
+                    status: data[0].status, 
+                    paidAmount: data[0].paid_amount, 
+                    createdBy: userName 
+                }); 
+            }
+            logAction('إضافة', 'فاتورة', `إصدار فاتورة جديدة رقم ${meta.invNum} للعميل ${cleanCustName}`); 
+            hideLoading(); closeModal(); renderInvoices(); showToast('تم الإصدار');
         }
 
         // ================= Customers =================
