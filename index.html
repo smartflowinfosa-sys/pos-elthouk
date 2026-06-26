@@ -364,9 +364,24 @@
                 </div>
 
                 <div id="sec-stock" class="section hidden">
-                    <div class="card">
-                        <h3 class="card-header">إدارة المخزون</h3>
-                        <p style="color:var(--text-muted);">هذه الشاشة تحت التطوير والإعداد.</p>
+                    <div class="flex" style="justify-content: space-between; margin-bottom: 20px; align-items:center;">
+                        <h3 style="color:var(--primary); font-size:1.4rem;">إدارة المخزون والأصول</h3>
+                        <button class="icon-btn-solid info" onclick="renderStock()" title="تحديث البيانات"><i class="fas fa-sync"></i></button>
+                    </div>
+                    <div class="card" style="padding:10px;">
+                        <div class="table-responsive">
+                            <table id="stock-table" style="margin-top:0;">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align:right">المنتج / الأصل</th>
+                                        <th style="text-align:center">الفئة</th>
+                                        <th style="text-align:center">إجمالي المخزون (المملوك)</th>
+                                        <th style="text-align:center">إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -599,7 +614,8 @@
 
                 if(usersRes.data) db.users = usersRes.data;
                 if(catsRes.data) db.categories = catsRes.data.map(c => ({ id: c.id, nameAr: c.name_ar }));
-                if(prodsRes.data) db.products = prodsRes.data.map(p => ({ id: p.id, nameAr: p.name_ar, catId: p.cat_id, price: p.price, active: p.active, image: p.image, createdBy: p.created_by || 'غير محدد' }));
+                // تحديث لجلب الكمية الكلية (totalQty)
+                if(prodsRes.data) db.products = prodsRes.data.map(p => ({ id: p.id, nameAr: p.name_ar, catId: p.cat_id, price: p.price, active: p.active, image: p.image, totalQty: p.total_qty || 0, createdBy: p.created_by || 'غير محدد' }));
                 if(custsRes.data) db.customers = custsRes.data.map(c => ({ id: c.id, name: c.name, phone: c.phone, address1: c.address1, address2: c.address2, notes: c.notes, createdBy: c.created_by || 'غير محدد' }));
                 if(invsRes.data) db.invoices = invsRes.data.map(i => ({ id: i.id, invNumber: i.inv_number, date: i.date, serviceTime: i.service_time, customerId: i.customer_id, customerName: i.customer_name, items: i.items, subtotal: i.subtotal, discountVal: i.discount_val, total: i.total, status: i.status, paidAmount: i.paid_amount, createdBy: i.created_by || 'غير محدد' }));
                 if(expRes.data) db.expenses = expRes.data.map(e => ({ id: e.id, date: e.date, type: e.type, category: e.category, customCategory: e.custom_category, amount: e.amount, method: e.method, notes: e.notes, image: e.image, createdBy: e.created_by || 'غير محدد' }));
@@ -755,6 +771,7 @@
             if(id==='dashboard') renderDashboard(); if(id==='performance') renderPerformance(); if(id==='expenses') renderExpenses();
             if(id==='invoices') renderInvoices(); if(id==='customers') renderCustomers(); if(id==='products') { renderProducts(); loadCatFilter(); }
             if(id==='users') renderUsers(); if(id==='syslogs') fetchAndRenderSyslogs(); if(id==='settings') loadSettingsUI();
+            if(id==='stock') renderStock(); // إضافة الاستدعاء الخاص بشاشة المخزون
         }
 
         // ================= Dashboard =================
@@ -893,6 +910,35 @@
             logAction('طباعة', 'مصروفات', 'طباعة تقرير المصروفات'); closeModal(); document.getElementById('expense-print-view').classList.add('active-print'); window.print(); setTimeout(() => document.getElementById('expense-print-view').classList.remove('active-print'), 1000);
         }
         
+        // ================= Smart Live Inventory Logic =================
+        function getAvailableQty(productId, targetDateTimeStr) {
+            const product = db.products.find(p => p.id === productId);
+            if (!product || !product.totalQty) return 0;
+
+            // استخراج التاريخ فقط (بدون الوقت) لمعرفة حجوزات نفس اليوم
+            const targetDate = targetDateTimeStr ? targetDateTimeStr.split('T')[0] : new Date().toISOString().split('T')[0];
+            let bookedQty = 0;
+
+            db.invoices.forEach(inv => {
+                // إذا الفاتورة غير ملغاة ومسجلة في نفس تاريخ الخدمة المطلوب
+                if (inv.status !== 'ملغاة' && inv.serviceTime && inv.serviceTime.split('T')[0] === targetDate) {
+                    const item = inv.items.find(i => i.id === productId);
+                    if (item) bookedQty += item.qty; // جمع الكميات المحجوزة
+                }
+            });
+
+            return product.totalQty - bookedQty;
+        }
+
+        // دالة عرض شاشة إدارة المخزون
+        function renderStock() {
+            const tbody = document.querySelector('#stock-table tbody'); tbody.innerHTML = '';
+            db.products.forEach(p => {
+                const cat = db.categories.find(c => c.id == p.catId);
+                tbody.innerHTML += `<tr><td style="text-align:right; font-weight:bold;">${p.nameAr}</td><td style="text-align:center">${cat ? cat.nameAr : '-'}</td><td style="text-align:center" class="en-numbers"><span style="background:rgba(139, 58, 42, 0.1); padding:4px 12px; border-radius:20px; color:var(--primary); font-weight:bold;">${p.totalQty || 0}</span></td><td style="text-align:center"><button class="btn btn-outline" style="padding:4px 10px; font-size:0.85rem;" onclick="openProductModal(${p.id})">تعديل</button></td></tr>`;
+            });
+        }
+
         // ================= Categories & Products =================
         function openCategoriesModal() {
             let rows = ''; db.categories.forEach(c => { rows += `<tr><td>${c.nameAr}</td><td style="text-align:center;"><button class="btn btn-outline" style="padding:2px 5px;" onclick="editCategory(${c.id}, '${c.nameAr}')">تعديل</button> <button class="btn btn-danger" style="padding:2px 5px;" onclick="delCategory(${c.id})">حذف</button></td></tr>`; });
@@ -922,14 +968,14 @@
 
         function openProductModal(id = null) {
             if(db.categories.length === 0) { showToast('أضف فئة أولا', 'error'); return openCategoriesModal(); }
-            const p = id ? db.products.find(x => x.id === id) : { nameAr:'', catId: db.categories[0].id, price:'', active:true, image:'' };
+            const p = id ? db.products.find(x => x.id === id) : { nameAr:'', catId: db.categories[0].id, price:'', active:true, image:'', totalQty:0 };
             let catOpts = ''; db.categories.forEach(c => catOpts += `<option value="${c.id}" ${p.catId==c.id?'selected':''}>${c.nameAr}</option>`);
             showModal(`
             <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
                 <h3 style="color:var(--primary); margin:0;">${id ? 'تعديل صنف' : 'إضافة صنف جديد'}</h3>
                 <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
             </div>
-            <div class="grid grid-2"><div><label>صورة الصنف</label><input type="file" accept="image/*" id="prod-img" onchange="encodeProdImg(this)" style="padding:5px;"><img id="prod-img-preview" src="${p.image||''}" style="width:100px; height:100px; object-fit:cover; margin-top:5px; border-radius:6px; display:${p.image?'block':'none'};"><input type="hidden" id="prod-img-b64" value="${p.image||''}"></div><div><label>الاسم</label><input type="text" id="prod-ar" value="${p.nameAr}" required><label>الفئة</label><select id="prod-cat">${catOpts}</select><label>السعر</label><input type="number" id="prod-price" value="${p.price}" class="en-numbers" required><div class="checkbox-box" style="margin-top:10px;"><input type="checkbox" id="prod-active" ${p.active?'checked':''}><span>متاح للبيع</span></div></div></div><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="saveProduct(${id || 'null'})">حفظ</button></div>`);
+            <div class="grid grid-2"><div><label>صورة الصنف</label><input type="file" accept="image/*" id="prod-img" onchange="encodeProdImg(this)" style="padding:5px;"><img id="prod-img-preview" src="${p.image||''}" style="width:100px; height:100px; object-fit:cover; margin-top:5px; border-radius:6px; display:${p.image?'block':'none'};"><input type="hidden" id="prod-img-b64" value="${p.image||''}"></div><div><label>الاسم</label><input type="text" id="prod-ar" value="${p.nameAr}" required><label>الفئة</label><select id="prod-cat">${catOpts}</select><div class="flex" style="gap:10px;"><div style="flex:1;"><label>السعر</label><input type="number" id="prod-price" value="${p.price}" class="en-numbers" required></div><div style="flex:1;"><label>إجمالي المخزون</label><input type="number" id="prod-qty" value="${p.totalQty||0}" class="en-numbers" required></div></div><div class="checkbox-box" style="margin-top:10px;"><input type="checkbox" id="prod-active" ${p.active?'checked':''}><span>متاح للبيع</span></div></div></div><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="saveProduct(${id || 'null'})">حفظ</button></div>`);
         }
 
         function encodeProdImg(input) { const f = input.files[0]; if(f) { const r = new FileReader(); r.onload = e => { document.getElementById('prod-img-preview').src = e.target.result; document.getElementById('prod-img-preview').style.display = 'block'; document.getElementById('prod-img-b64').value = e.target.result; }; r.readAsDataURL(f); } }
@@ -937,14 +983,14 @@
         async function saveProduct(id) {
             const nameAr = document.getElementById('prod-ar').value; const price = parseFloat(document.getElementById('prod-price').value); if(!nameAr || isNaN(price)) return;
             const userName = currentUser.name || currentUser.username;
-            const dataObj = { name_ar: nameAr, cat_id: parseInt(document.getElementById('prod-cat').value), price: price, active: document.getElementById('prod-active').checked, image: document.getElementById('prod-img-b64').value };
+            const dataObj = { name_ar: nameAr, cat_id: parseInt(document.getElementById('prod-cat').value), price: price, total_qty: parseInt(document.getElementById('prod-qty').value) || 0, active: document.getElementById('prod-active').checked, image: document.getElementById('prod-img-b64').value };
             showLoading();
             if(id) {
-                await supabaseClient.from('thawq_products').update(dataObj).eq('id', id); const idx = db.products.findIndex(x => x.id === id); if(idx > -1) db.products[idx] = { id, nameAr: dataObj.name_ar, catId: dataObj.cat_id, ...dataObj, createdBy: db.products[idx].createdBy };
+                await supabaseClient.from('thawq_products').update(dataObj).eq('id', id); const idx = db.products.findIndex(x => x.id === id); if(idx > -1) db.products[idx] = { id, nameAr: dataObj.name_ar, catId: dataObj.cat_id, totalQty: dataObj.total_qty, ...dataObj, createdBy: db.products[idx].createdBy };
                 logAction('تعديل', 'صنف', `تعديل صنف: ${nameAr}`);
             } else {
                 dataObj.created_by = userName;
-                const { data } = await supabaseClient.from('thawq_products').insert([dataObj]).select(); if(data && data[0]) db.products.push({ id: data[0].id, nameAr: data[0].name_ar, catId: data[0].cat_id, createdBy: userName, ...data[0] });
+                const { data } = await supabaseClient.from('thawq_products').insert([dataObj]).select(); if(data && data[0]) db.products.push({ id: data[0].id, nameAr: data[0].name_ar, catId: data[0].cat_id, totalQty: data[0].total_qty, createdBy: userName, ...data[0] });
                 logAction('إضافة', 'صنف', `صنف جديد: ${nameAr}`);
             }
             hideLoading(); closeModal(); renderProducts(); showToast('تم الحفظ');
@@ -1141,7 +1187,7 @@
                         
                         <div style="background: rgba(139, 58, 42, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border);">
                             <label style="font-size:0.85rem; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">تاريخ ووقت الخدمة:</label>
-                            <input type="datetime-local" id="pos-service-time" class="en-numbers" lang="en-US" dir="ltr" value="${currentDateTime}" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%; text-align: left;">
+                            <input type="datetime-local" id="pos-service-time" class="en-numbers" lang="en-US" dir="ltr" value="${currentDateTime}" onchange="renderPOSProductsModal()" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%; text-align: left;">
                         </div>
 
                         <div class="flex" style="justify-content:space-between;"><span>المجموع:</span> <span id="pos-sub" class="en-numbers">0</span></div>
@@ -1205,9 +1251,43 @@
             }
         }
 
-        function renderPOSProductsModal() { const grid = document.getElementById('pos-products-grid'); const filter = document.getElementById('pos-cat-filter-modal').value; grid.innerHTML = ''; db.products.filter(p => p.active && (filter === 'all' || p.catId == filter)).forEach(p => { const img = p.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; grid.innerHTML += `<div class="pos-item-card" onclick="addToCart(${p.id}, '${p.nameAr}', ${p.price})"><img src="${img}" class="pos-item-img"><div class="pos-item-info"><strong>${p.nameAr}</strong><br><span style="color:var(--primary)" class="en-numbers">${p.price} SAR</span></div></div>`; }); }
-        function addToCart(id, name, price) { const ex = posCart.find(i => i.id === id); if(ex) ex.qty++; else posCart.push({ id, name, price, qty: 1 }); renderCart(); }
-        function changeQty(id, d) { const item = posCart.find(i => i.id === id); if(item) { item.qty += d; if(item.qty <= 0) posCart = posCart.filter(i => i.id !== id); renderCart(); } }
+        // دالة عرض المنتجات في شاشة الفاتورة (محدثة لدعم المخزون الذكي)
+        function renderPOSProductsModal() { 
+            const grid = document.getElementById('pos-products-grid'); 
+            const filter = document.getElementById('pos-cat-filter-modal').value; 
+            const targetDateStr = document.getElementById('pos-service-time').value; // قراءة التاريخ الذي اختاره الكاشير
+
+            grid.innerHTML = ''; 
+            db.products.filter(p => p.active && (filter === 'all' || p.catId == filter)).forEach(p => { 
+                const img = p.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; 
+                
+                // حساب المتاح بناءً على الحجوزات السابقة لنفس اليوم
+                const available = getAvailableQty(p.id, targetDateStr);
+                // خصم ما هو موجود حالياً في السلة المفتوحة
+                const currentCartItem = posCart.find(i => i.id === p.id);
+                const cartQty = currentCartItem ? currentCartItem.qty : 0;
+                const netAvailable = available - cartQty;
+
+                const isOutOfStock = netAvailable <= 0;
+                // تغيير شكل البطاقة إذا نفذت الكمية
+                const cardStyle = isOutOfStock ? 'opacity:0.5; filter:grayscale(1); cursor:not-allowed;' : 'cursor:pointer;';
+                const clickAction = isOutOfStock ? `showToast('الكمية نفذت لهذا اليوم!', 'error')` : `addToCart(${p.id}, '${p.nameAr}', ${p.price})`;
+                const stockColor = isOutOfStock ? 'var(--danger)' : 'var(--success)';
+
+                grid.innerHTML += `
+                <div class="pos-item-card" style="${cardStyle}" onclick="${clickAction}">
+                    <img src="${img}" class="pos-item-img">
+                    <div class="pos-item-info">
+                        <strong>${p.nameAr}</strong><br>
+                        <span style="color:var(--primary)" class="en-numbers">${p.price} SAR</span><br>
+                        <span style="font-size:0.85rem; color:${stockColor}; font-weight:bold;" class="en-numbers">متاح: ${netAvailable}</span>
+                    </div>
+                </div>`; 
+            }); 
+        }
+
+        function addToCart(id, name, price) { const ex = posCart.find(i => i.id === id); if(ex) ex.qty++; else posCart.push({ id, name, price, qty: 1 }); renderCart(); renderPOSProductsModal(); }
+        function changeQty(id, d) { const item = posCart.find(i => i.id === id); if(item) { item.qty += d; if(item.qty <= 0) posCart = posCart.filter(i => i.id !== id); renderCart(); renderPOSProductsModal(); } }
         function renderCart() { const list = document.getElementById('pos-cart-items'); list.innerHTML = ''; posCart.forEach(i => { list.innerHTML += `<div class="cart-row"><div style="flex:1;">${i.name}</div><div style="display:flex; gap:5px; align-items:center;"><button class="cart-qty-btn" onclick="changeQty(${i.id}, 1)">+</button><span class="en-numbers">${i.qty}</span><button class="cart-qty-btn" onclick="changeQty(${i.id}, -1)">-</button></div><div style="width:60px; text-align:left;" class="en-numbers">${(i.price * i.qty).toFixed(2)}</div></div>`; }); updateCartTotals(); }
         function updateCartTotals() { const sub = posCart.reduce((s,i)=>s+(i.price*i.qty),0); const discInput = document.getElementById('pos-disc'); const discPercent = parseFloat(discInput ? discInput.value : 0) || 0; const discVal = sub * (discPercent / 100); const total = Math.max(0, sub - discVal); if(document.getElementById('pos-sub')) { document.getElementById('pos-sub').innerText = sub.toFixed(2); document.getElementById('pos-total').innerText = total.toFixed(2); } return { sub, discVal, total }; }
 
