@@ -373,7 +373,7 @@
                 <div id="sec-invoices" class="section hidden">
                     <div class="flex" style="justify-content: space-between; margin-bottom: 20px; align-items:center; flex-wrap:wrap; gap:10px;">
                         <input type="text" id="inv-search" placeholder="بحث برقم الفاتورة أو العميل..." class="en-numbers" style="width: 250px; margin:0; max-width:100%;" onkeyup="renderInvoices()">
-                        <button class="btn btn-primary" onclick="openPOSModal()"><i class="fas fa-plus"></i> إنشاء فاتورة (سلة)</button>
+                        <button class="btn btn-primary" onclick="openPOSModal()"><i class="fas fa-plus"></i> إنشاء فاتورة</button>
                     </div>
                     <div class="card" style="padding: 10px;">
                         <div class="table-responsive">
@@ -1121,9 +1121,16 @@
                 <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
             </div>
             
-            <div style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
-                <select id="pos-cust" style="flex:1; min-width:200px;">${custOpts}</select>
-                <select id="pos-cat-filter-modal" style="width:150px; cursor:pointer;" onchange="renderPOSProductsModal()">${catOpts}</select>
+            <div style="margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                <select id="pos-cust" style="flex:1; min-width:150px; margin:0;">${custOpts}</select>
+                <button class="icon-btn-solid info" style="margin:0;" onclick="toggleQuickAddCustomer()" title="إضافة عميل جديد سريع"><i class="fas fa-user-plus"></i></button>
+                <select id="pos-cat-filter-modal" style="width:150px; cursor:pointer; margin:0;" onchange="renderPOSProductsModal()">${catOpts}</select>
+            </div>
+
+            <div id="quick-add-cust-div" class="hidden" style="background:rgba(0,0,0,0.02); padding:10px; border-radius:6px; border:1px solid var(--border); margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <input type="text" id="quick-cust-name" placeholder="الاسم" style="flex:1; margin:0; min-width:120px;" required>
+                <input type="text" id="quick-cust-phone" placeholder="الجوال (ex: 05...)" class="en-numbers" style="flex:1; margin:0; min-width:120px;" required>
+                <button class="btn btn-success" style="padding: 10px;" onclick="quickSaveCustomer()">حفظ واختيار</button>
             </div>
             
             <div class="pos-container">
@@ -1133,8 +1140,8 @@
                     <div style="font-size:0.9rem;">
                         
                         <div style="background: rgba(139, 58, 42, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border);">
-                            <label style="font-size:0.85rem; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">تاريخ ووقت الخدمة (لرسالة التقييم):</label>
-                            <input type="datetime-local" id="pos-service-time" class="en-numbers" value="${currentDateTime}" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%;">
+                            <label style="font-size:0.85rem; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">تاريخ ووقت الخدمة:</label>
+                            <input type="datetime-local" id="pos-service-time" class="en-numbers" lang="en-US" dir="ltr" value="${currentDateTime}" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%; text-align: left;">
                         </div>
 
                         <div class="flex" style="justify-content:space-between;"><span>المجموع:</span> <span id="pos-sub" class="en-numbers">0</span></div>
@@ -1155,6 +1162,49 @@
             renderPOSProductsModal(); updateCartTotals();
         }
         
+        function toggleQuickAddCustomer() {
+            const div = document.getElementById('quick-add-cust-div');
+            if(div) div.classList.toggle('hidden');
+        }
+
+        async function quickSaveCustomer() {
+            const name = document.getElementById('quick-cust-name').value.trim();
+            const phone = document.getElementById('quick-cust-phone').value.trim();
+            if(!name || !phone) return showToast('الرجاء إدخال الاسم ورقم الجوال', 'error');
+
+            const userName = currentUser.name || currentUser.username;
+            const dataObj = { name: name, phone: phone, created_by: userName };
+
+            showLoading('جاري الحفظ...');
+            const { data, error } = await supabaseClient.from('thawq_customers').insert([dataObj]).select();
+            hideLoading();
+
+            if (error) {
+                console.error(error);
+                return showToast('حدث خطأ أثناء الحفظ', 'error');
+            }
+
+            if(data && data[0]) {
+                const newCust = { id: data[0].id, createdBy: userName, ...dataObj };
+                db.customers.push(newCust);
+                logAction('إضافة', 'عميل', `تسجيل عميل جديد من شاشة الفاتورة: ${name}`);
+
+                const custSel = document.getElementById('pos-cust');
+                const opt = document.createElement('option');
+                opt.value = newCust.id;
+                opt.text = `${newCust.name} ${newCust.phone ? '- '+newCust.phone : ''}`;
+                custSel.add(opt);
+                custSel.value = newCust.id;
+
+                toggleQuickAddCustomer();
+                document.getElementById('quick-cust-name').value = '';
+                document.getElementById('quick-cust-phone').value = '';
+
+                showToast('تم حفظ العميل بنجاح');
+                renderCustomers();
+            }
+        }
+
         function renderPOSProductsModal() { const grid = document.getElementById('pos-products-grid'); const filter = document.getElementById('pos-cat-filter-modal').value; grid.innerHTML = ''; db.products.filter(p => p.active && (filter === 'all' || p.catId == filter)).forEach(p => { const img = p.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; grid.innerHTML += `<div class="pos-item-card" onclick="addToCart(${p.id}, '${p.nameAr}', ${p.price})"><img src="${img}" class="pos-item-img"><div class="pos-item-info"><strong>${p.nameAr}</strong><br><span style="color:var(--primary)" class="en-numbers">${p.price} SAR</span></div></div>`; }); }
         function addToCart(id, name, price) { const ex = posCart.find(i => i.id === id); if(ex) ex.qty++; else posCart.push({ id, name, price, qty: 1 }); renderCart(); }
         function changeQty(id, d) { const item = posCart.find(i => i.id === id); if(item) { item.qty += d; if(item.qty <= 0) posCart = posCart.filter(i => i.id !== id); renderCart(); } }
@@ -1227,7 +1277,7 @@
 
             showModal(`
                 <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
-                    <h3 style="color:var(--primary); margin:0;">مل ملف العميل: ${c.name}</h3>
+                    <h3 style="color:var(--primary); margin:0;">ملف العميل: ${c.name}</h3>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <div style="display:flex; gap:5px;"><button class="icon-btn-solid warning" onclick="openCustomerModal(${c.id})"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteCustomer(${c.id})"><i class="fas fa-trash"></i></button>` : ''}</div>
                         <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
