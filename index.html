@@ -41,6 +41,7 @@
         .en-numbers { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
         .en-numbers-center { direction: ltr !important; text-align: center !important; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
         input[type="number"], input[type="date"], input[type="datetime-local"], input[type="email"], input[type="password"] { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: block; width: 100%; }
+        select option { font-family: 'Arial', 'Tajawal', sans-serif; }
 
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
@@ -389,7 +390,7 @@
                 <div id="sec-invoices" class="section hidden">
                     <div class="flex" style="justify-content: space-between; margin-bottom: 20px; align-items:center; flex-wrap:wrap; gap:10px;">
                         <input type="text" id="inv-search" placeholder="بحث برقم الفاتورة أو العميل..." class="en-numbers" style="width: 250px; margin:0; max-width:100%;" onkeyup="renderInvoices()">
-                        <button class="btn btn-primary" onclick="openPOSModal()"><i class="fas fa-plus"></i> إنشاء فاتورة</button>
+                        <button class="btn btn-primary" onclick="createNewInvoice()"><i class="fas fa-plus"></i> إنشاء فاتورة</button>
                     </div>
                     <div class="card" style="padding: 10px;">
                         <div class="table-responsive">
@@ -618,7 +619,6 @@
                 
                 if(prodsRes.data) db.products = prodsRes.data.map(p => ({ id: p.id, nameAr: p.name_ar, catId: p.cat_id, price: p.price, active: p.active, image: p.image, totalQty: p.total_qty || 0, createdBy: p.created_by || 'غير محدد' }));
                 
-                // 🌟 تحديث جلب العملاء ليتضمن رصيد المحفظة (walletBalance)
                 if(custsRes.data) db.customers = custsRes.data.map(c => ({ id: c.id, name: c.name, phone: c.phone, address1: c.address1, address2: c.address2, notes: c.notes, walletBalance: c.wallet_balance || 0, createdBy: c.created_by || 'غير محدد' }));
                 
                 if(invsRes.data) db.invoices = invsRes.data.map(i => ({ id: i.id, invNumber: i.inv_number, date: i.date, serviceTime: i.service_time, customerId: i.customer_id, customerName: i.customer_name, items: i.items, subtotal: i.subtotal, discountVal: i.discount_val, total: i.total, status: i.status, paidAmount: i.paid_amount, createdBy: i.created_by || 'غير محدد' }));
@@ -636,7 +636,7 @@
                 }
 
             } catch (error) {
-                console.error("Database error:", error); showToast("تأكد من تطبيق الخطوة رقم 1 في قاعدة البيانات لتحديث الجداول", "error");
+                console.error("Database error:", error); showToast("خطأ في جلب البيانات من قاعدة البيانات", "error");
             }
         }
 
@@ -925,9 +925,10 @@
 
             db.invoices.forEach(inv => {
                 // إذا الفاتورة غير ملغاة ومسجلة في نفس تاريخ الخدمة المطلوب
-                if (inv.status !== 'ملغاة' && inv.serviceTime && inv.serviceTime.split('T')[0] === targetDate) {
+                // استثناء الفاتورة الحالية في حالة وضع التعديل (لكي لا يخصم المخزون من نفسه)
+                if (inv.status !== 'ملغاة' && inv.serviceTime && inv.serviceTime.split('T')[0] === targetDate && inv.id !== editingInvoiceId) {
                     const item = inv.items.find(i => i.id === productId);
-                    if (item) bookedQty += item.qty; // جمع الكميات المحجوزة
+                    if (item) bookedQty += item.qty; 
                 }
             });
 
@@ -1008,7 +1009,6 @@
             db.invoices.filter(i => i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search))).forEach(inv => {
                 let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
                 
-                // إضافة وقت الخدمة وتنسيقه ليظهر في الجدول
                 let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
 
                 tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
@@ -1028,7 +1028,6 @@
             let itemsHtml = ''; inv.items.forEach(i => { itemsHtml += `<tr><td style="text-align:right; width:40%;">${i.name}</td><td style="text-align:center; width:20%;"><span class="en-numbers">${i.qty}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${parseFloat(i.price).toFixed(2)}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${(i.price*i.qty).toFixed(2)}</span></td></tr>`; });
             let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
             
-            // إضافة وقت الخدمة لبطاقة تفاصيل الفاتورة
             let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
 
             showModal(`
@@ -1040,10 +1039,20 @@
                     <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
                 </div>
                 
-                <div class="grid grid-3" style="font-size:0.95rem; margin-bottom:20px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px;">
-                    <div><strong>العميل:</strong> <br>${inv.customerName}</div>
-                    <div><strong>تاريخ الإصدار:</strong> <br><span class="en-numbers" style="float:left;">${inv.date}</span></div>
-                    <div><strong style="color:var(--primary);">وقت الخدمة:</strong> <br><span class="en-numbers" style="float:left; font-weight:bold;">${sTime}</span></div>
+                <!-- 🌟 تعديل المحاذاة الشامل هنا 🌟 -->
+                <div class="grid grid-3" style="font-size:0.95rem; margin-bottom:20px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; text-align:center;">
+                    <div>
+                        <strong style="color:var(--text-muted); font-size:0.85rem; display:block; margin-bottom:5px;">العميل:</strong>
+                        <span style="font-weight:bold;">${inv.customerName}</span>
+                    </div>
+                    <div>
+                        <strong style="color:var(--text-muted); font-size:0.85rem; display:block; margin-bottom:5px;">تاريخ الإصدار:</strong>
+                        <span class="en-numbers" style="font-weight:bold; display:inline-block;">${inv.date}</span>
+                    </div>
+                    <div>
+                        <strong style="color:var(--primary); font-size:0.85rem; display:block; margin-bottom:5px;">وقت الخدمة:</strong>
+                        <span class="en-numbers" style="font-weight:bold; display:inline-block;">${sTime}</span>
+                    </div>
                 </div>
 
                 <div class="table-responsive"><table style="font-size:0.9rem; margin-bottom:20px; width:100%;"><thead><tr><th style="text-align:right;">الصنف</th><th style="text-align:center;">الكمية</th><th style="text-align:center;">السعر</th><th style="text-align:center;">الإجمالي</th></tr></thead><tbody>${itemsHtml}</tbody></table></div>
@@ -1056,7 +1065,8 @@
                 </div>
                 <div class="flex" style="justify-content:space-between; margin-top:25px; flex-wrap:wrap; gap:10px;">
                     <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="btn btn-outline" onclick="printInvoice(${inv.id})"><i class="fas fa-print"></i> طباعة</button><button class="btn btn-success" onclick="sendInvoiceWA(${inv.id})"><i class="fab fa-whatsapp"></i> إرسال (PDF)</button></div>
-                    <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="icon-btn-solid warning" onclick="editInvoiceStatus(${inv.id})" title="تعديل الحالة"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteInvoice(${inv.id})" title="حذف نهائي"><i class="fas fa-trash"></i></button>` : ''}</div>
+                    <!-- 🌟 زر تعديل الفاتورة الشامل 🌟 -->
+                    <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="icon-btn-solid warning" onclick="editFullInvoice(${inv.id})" title="تعديل الفاتورة بالكامل"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteInvoice(${inv.id})" title="حذف نهائي"><i class="fas fa-trash"></i></button>` : ''}</div>
                 </div>
             `, 'modal-lg');
         }
@@ -1066,27 +1076,6 @@
                 const inv = db.invoices.find(i => i.id === id); showLoading(); await supabaseClient.from('thawq_invoices').delete().eq('id', id); db.invoices=db.invoices.filter(i=>i.id!=id); 
                 logAction('حذف', 'فاتورة', `حذف نهائي للفاتورة رقم ${inv ? inv.invNumber : id}`); hideLoading(); renderInvoices(); closeModal(); showToast('تم الحذف');
             } 
-        }
-
-        function editInvoiceStatus(id) {
-            const inv = db.invoices.find(i => i.id === id); if(!inv) return;
-            showModal(`
-                <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
-                    <h3 style="color:var(--primary); margin:0;">تعديل حالة الفاتورة</h3>
-                    <button onclick="viewInvoiceDetails(${inv.id})" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
-                </div>
-                <p class="en-numbers" style="text-align:right; margin-bottom:15px; color:var(--primary)">${inv.invNumber}</p><label>الحالة:</label><select id="edit-inv-status" onchange="togglePaidInput(this.value)"><option value="غير مدفوع" ${inv.status==='غير مدفوع'?'selected':''}>غير مدفوع</option><option value="مدفوع جزئيا" ${inv.status==='مدفوع جزئيا'?'selected':''}>مدفوع جزئيا</option><option value="مدفوع بالكامل" ${inv.status==='مدفوع بالكامل'?'selected':''}>مدفوع بالكامل</option><option value="ملغاة" ${inv.status==='ملغاة'?'selected':''}>ملغاة (إلغاء الفاتورة)</option></select><div id="paid-amount-container" style="display:${inv.status==='مدفوع جزئيا'?'block':'none'}; margin-top:15px;"><label>المبلغ المدفوع:</label><input type="number" id="edit-paid-amount" class="en-numbers" value="${inv.paidAmount || 0}" step="0.01"></div><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="viewInvoiceDetails(${inv.id})">إلغاء</button><button class="btn btn-primary" onclick="saveInvoiceStatus(${inv.id})">حفظ التعديل</button></div>`);
-        }
-        function togglePaidInput(val) { document.getElementById('paid-amount-container').style.display = (val === 'مدفوع جزئيا') ? 'block' : 'none'; }
-
-        async function saveInvoiceStatus(id) {
-            const inv = db.invoices.find(i => i.id === id);
-            if(inv) {
-                const newStatus = document.getElementById('edit-inv-status').value; let newPaid = 0;
-                if(newStatus === 'مدفوع بالكامل') newPaid = inv.total; else if(newStatus === 'غير مدفوع' || newStatus === 'ملغاة') newPaid = 0; else newPaid = parseFloat(document.getElementById('edit-paid-amount').value) || 0;
-                showLoading(); await supabaseClient.from('thawq_invoices').update({ status: newStatus, paid_amount: newPaid }).eq('id', id);
-                inv.status = newStatus; inv.paidAmount = newPaid; logAction(newStatus === 'ملغاة' ? 'إلغاء' : 'تعديل', 'فاتورة', `تغيير حالة الفاتورة رقم ${inv.invNumber} إلى: ${newStatus}`); hideLoading(); renderInvoices(); viewInvoiceDetails(id); showToast('تم التعديل');
-            }
         }
 
         function printInvoice(id) {
@@ -1099,75 +1088,97 @@
             logAction('طباعة', 'فاتورة', `طباعة الفاتورة رقم ${inv.invNumber}`); document.getElementById('print-view').classList.add('active-print'); window.print(); setTimeout(() => document.getElementById('print-view').classList.remove('active-print'), 1000);
         }
 
-        // ================= إرسال الفاتورة عبر الـ Webhook (يتم بناء PDF في n8n عبر Gotenberg) =================
         async function sendInvoiceWA(id) {
             const inv = db.invoices.find(i => i.id === id); if(!inv) return;
-            
             let phone = ''; 
             if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
-            
-            if (!phone || phone.trim() === '') {
-                return showToast('لا يمكن الإرسال: هذا العميل لا يمتلك رقم جوال مسجل!', 'error');
-            }
-
+            if (!phone || phone.trim() === '') { return showToast('لا يمكن الإرسال: هذا العميل لا يمتلك رقم جوال مسجل!', 'error'); }
             if(phone.startsWith('0')) phone = '966' + phone.substring(1);
 
             showLoading('جاري إرسال بيانات الفاتورة للسيرفر...');
-
             try {
                 const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
-                
                 const response = await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        phone: phone,
-                        customerName: inv.customerName,
-                        invNumber: inv.invNumber,
-                        storeName: db.settings.storeName,
-                        vatNumber: db.settings.vatNumber || '',
-                        storePhone: db.settings.phone || '',
-                        storeLogo: db.settings.logo || '',
-                        date: inv.date,
-                        status: inv.status,
-                        items: inv.items,
-                        subtotal: inv.subtotal,
-                        discountVal: inv.discountVal,
-                        total: inv.total,
-                        paidAmount: inv.paidAmount !== undefined ? inv.paidAmount : inv.total,
-                        cashier: inv.createdBy
+                        phone: phone, customerName: inv.customerName, invNumber: inv.invNumber, storeName: db.settings.storeName, vatNumber: db.settings.vatNumber || '', storePhone: db.settings.phone || '', storeLogo: db.settings.logo || '', date: inv.date, status: inv.status, items: inv.items, subtotal: inv.subtotal, discountVal: inv.discountVal, total: inv.total, paidAmount: inv.paidAmount !== undefined ? inv.paidAmount : inv.total, cashier: inv.createdBy
                     })
                 });
-
                 hideLoading();
-                if(response.ok) {
-                    logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`);
-                    showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!');
-                } else {
-                    showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error');
-                }
-            } catch (error) {
-                hideLoading();
-                console.error(error);
-                showToast('حدث خطأ أثناء الاتصال بالسيرفر', 'error');
-            }
+                if(response.ok) { logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`); showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!'); } else { showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error'); }
+            } catch (error) { hideLoading(); console.error(error); showToast('حدث خطأ أثناء الاتصال بالسيرفر', 'error'); }
         }
 
-        // ================= POS Cart =================
+        // ================= POS Cart & Full Edit =================
         let posCart = [];
+        let editingInvoiceId = null; // 🌟 متغير لمعرفة إذا كنا في وضع التعديل
+
+        function createNewInvoice() {
+            editingInvoiceId = null;
+            openPOSModal();
+        }
+
+        // 🌟 دالة تعديل الفاتورة الشاملة 🌟
+        function editFullInvoice(id) {
+            editingInvoiceId = id;
+            const inv = db.invoices.find(i => i.id === id);
+            if(!inv) return;
+            
+            closeModal(); // إغلاق شاشة التفاصيل
+            openPOSModal(); // فتح شاشة الكاشير
+            
+            // الانتظار قليلاً حتى تُرسم الشاشة ثم تعبئتها ببيانات الفاتورة
+            setTimeout(() => {
+                document.getElementById('pos-cust').value = inv.customerId;
+                document.getElementById('pos-service-time').value = inv.serviceTime || '';
+                
+                // استنتاج نسبة الخصم
+                let discPercent = 0;
+                if(inv.subtotal > 0 && inv.discountVal > 0) {
+                    discPercent = (inv.discountVal / inv.subtotal) * 100;
+                }
+                document.getElementById('pos-disc').value = discPercent.toFixed(0);
+                
+                // تعبئة السلة
+                posCart = JSON.parse(JSON.stringify(inv.items));
+                
+                // تعبئة حالة الدفع
+                const payStatusDropdown = document.getElementById('pos-pay-status');
+                if(payStatusDropdown) {
+                    payStatusDropdown.value = inv.status;
+                    togglePOSPaidInput(inv.status);
+                    if(inv.status === 'مدفوع جزئيا') {
+                        document.getElementById('pos-paid-amount').value = inv.paidAmount;
+                    }
+                }
+                
+                // تغيير زر الإصدار إلى تحديث
+                const btn = document.getElementById('btn-checkout');
+                if(btn) btn.innerText = 'حفظ التعديلات';
+                
+                posCustomerChanged();
+                renderCart();
+                renderPOSProductsModal();
+            }, 100);
+        }
+
         function openPOSModal() {
-            posCart = []; 
-            let custOpts = ''; db.customers.forEach(c => custOpts += `<option value="${c.id}">${c.name} ${c.phone?'- '+c.phone:''}</option>`);
+            if(!editingInvoiceId) posCart = []; 
+            
+            // 🌟 تعديل: الخيار الافتراضي للعميل فارغ 🌟
+            let custOpts = '<option value="" disabled selected>-- اختر العميل --</option>'; 
+            db.customers.forEach(c => custOpts += `<option value="${c.id}">${c.name} ${c.phone?'- '+c.phone:''}</option>`);
+            
             let catOpts = '<option value="all">كل الفئات</option>'; db.categories.forEach(c => catOpts += `<option value="${c.id}">${c.nameAr}</option>`);
             
-            // 🌟 توليد الوقت الحالي ليكون هو الافتراضي في مربع وقت الخدمة
             let now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             let currentDateTime = now.toISOString().slice(0,16);
 
             showModal(`
             <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
-                <h3 style="color:var(--primary); margin:0;">سلة المبيعات (POS)</h3>
+                <h3 style="color:var(--primary); margin:0;">${editingInvoiceId ? 'تعديل الفاتورة' : 'سلة المبيعات (POS)'}</h3>
                 <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
             </div>
             
@@ -1200,6 +1211,20 @@
                             <input type="number" id="pos-disc" class="en-numbers" style="width:60px; padding:5px; margin:0; text-align:center;" value="0" min="0" max="100" onkeyup="updateCartTotals()" onchange="updateCartTotals()">
                         </div>
 
+                        <!-- 🌟 قسم إضافة الدفع قبل الإصدار 🌟 -->
+                        <div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;">
+                            <span>حالة الدفع:</span>
+                            <select id="pos-pay-status" onchange="togglePOSPaidInput(this.value)" class="en-numbers" style="width:auto; margin:0; padding:5px; text-align:right;">
+                                <option value="مدفوع بالكامل">مدفوع بالكامل</option>
+                                <option value="مدفوع جزئيا">مدفوع جزئيا</option>
+                                <option value="غير مدفوع">غير مدفوع</option>
+                            </select>
+                        </div>
+                        <div class="flex hidden" id="pos-paid-amount-div" style="justify-content:space-between; margin:8px 0; align-items:center;">
+                            <span style="color:var(--warning);">المبلغ المدفوع:</span>
+                            <input type="number" id="pos-paid-amount" class="en-numbers" style="width:80px; padding:5px; margin:0; text-align:center; border-color:var(--warning);">
+                        </div>
+
                         <div class="flex hidden" id="pos-wallet-container" style="justify-content:space-between; margin:8px 0; align-items:center; background: rgba(40, 167, 69, 0.1); padding: 8px; border-radius: 6px; border: 1px solid var(--success);">
                             <label style="margin:0; color:var(--success); font-weight:bold; cursor:pointer;" class="flex">
                                 <input type="checkbox" id="pos-use-wallet" style="width:auto; margin:0 0 0 8px;" onchange="updateCartTotals()"> 
@@ -1212,18 +1237,28 @@
                         <div class="flex" style="justify-content:space-between; font-weight:bold; font-size:1.2rem; color:var(--primary);">
                             <span>الإجمالي:</span> <span id="pos-total" class="en-numbers">0</span>
                         </div>
-                        <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="checkout()">إصدار الفاتورة</button>
+                        <button id="btn-checkout" class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="checkout()">إصدار الفاتورة</button>
                         <button class="btn btn-outline" style="width:100%; margin-top:5px;" onclick="closeModal()">إلغاء</button>
                     </div>
                 </div>
             </div>`, 'modal-lg');
             
-            renderPOSProductsModal(); 
-            posCustomerChanged(); // لفحص محفظة أول عميل في القائمة
-            updateCartTotals();
+            if(!editingInvoiceId) {
+                renderPOSProductsModal(); 
+                posCustomerChanged(); 
+                updateCartTotals();
+            }
         }
         
-        // 🌟 دالة فحص وتفعيل المحفظة عند تغيير العميل في الفاتورة 🌟
+        // 🌟 إظهار وإخفاء حقل المبلغ المدفوع في الـ POS 🌟
+        function togglePOSPaidInput(val) {
+            const div = document.getElementById('pos-paid-amount-div');
+            if(div) {
+                div.style.display = (val === 'مدفوع جزئيا') ? 'flex' : 'none';
+                div.classList.toggle('hidden', val !== 'مدفوع جزئيا');
+            }
+        }
+
         function posCustomerChanged() {
             const custId = document.getElementById('pos-cust').value;
             const cust = db.customers.find(c => c.id == custId);
@@ -1240,27 +1275,19 @@
             updateCartTotals();
         }
 
-        function toggleQuickAddCustomer() {
-            const div = document.getElementById('quick-add-cust-div');
-            if(div) div.classList.toggle('hidden');
-        }
+        function toggleQuickAddCustomer() { const div = document.getElementById('quick-add-cust-div'); if(div) div.classList.toggle('hidden'); }
 
         async function quickSaveCustomer() {
-            const name = document.getElementById('quick-cust-name').value.trim();
-            const phone = document.getElementById('quick-cust-phone').value.trim();
+            const name = document.getElementById('quick-cust-name').value.trim(); const phone = document.getElementById('quick-cust-phone').value.trim();
             if(!name || !phone) return showToast('الرجاء إدخال الاسم ورقم الجوال', 'error');
-
             const userName = currentUser.name || currentUser.username;
-            const dataObj = { name: name, phone: phone, created_by: userName, wallet_balance: 0 }; // إضافة المحفظة للعميل السريع
+            const dataObj = { name: name, phone: phone, created_by: userName, wallet_balance: 0 }; 
 
             showLoading('جاري الحفظ...');
             const { data, error } = await supabaseClient.from('thawq_customers').insert([dataObj]).select();
             hideLoading();
 
-            if (error) {
-                console.error(error);
-                return showToast('حدث خطأ أثناء الحفظ', 'error');
-            }
+            if (error) return showToast('حدث خطأ أثناء الحفظ', 'error');
 
             if(data && data[0]) {
                 const newCust = { id: data[0].id, createdBy: userName, walletBalance: 0, ...dataObj };
@@ -1269,18 +1296,12 @@
 
                 const custSel = document.getElementById('pos-cust');
                 const opt = document.createElement('option');
-                opt.value = newCust.id;
-                opt.text = `${newCust.name} ${newCust.phone ? '- '+newCust.phone : ''}`;
-                custSel.add(opt);
-                custSel.value = newCust.id;
+                opt.value = newCust.id; opt.text = `${newCust.name} ${newCust.phone ? '- '+newCust.phone : ''}`;
+                custSel.add(opt); custSel.value = newCust.id;
 
                 toggleQuickAddCustomer();
-                document.getElementById('quick-cust-name').value = '';
-                document.getElementById('quick-cust-phone').value = '';
-
-                showToast('تم حفظ العميل بنجاح');
-                renderCustomers();
-                posCustomerChanged();
+                document.getElementById('quick-cust-name').value = ''; document.getElementById('quick-cust-phone').value = '';
+                showToast('تم حفظ العميل بنجاح'); renderCustomers(); posCustomerChanged();
             }
         }
 
@@ -1320,7 +1341,6 @@
         
         function renderCart() { const list = document.getElementById('pos-cart-items'); list.innerHTML = ''; posCart.forEach(i => { list.innerHTML += `<div class="cart-row"><div style="flex:1;">${i.name}</div><div style="display:flex; gap:5px; align-items:center;"><button class="cart-qty-btn" onclick="changeQty(${i.id}, 1)">+</button><span class="en-numbers">${i.qty}</span><button class="cart-qty-btn" onclick="changeQty(${i.id}, -1)">-</button></div><div style="width:60px; text-align:left;" class="en-numbers">${(i.price * i.qty).toFixed(2)}</div></div>`; }); updateCartTotals(); }
         
-        // 🌟 تحديث حاسبة السلة لتدعم خصم المحفظة 🌟
         function updateCartTotals() { 
             const sub = posCart.reduce((s,i)=>s+(i.price*i.qty),0); 
             const discInput = document.getElementById('pos-disc'); 
@@ -1335,7 +1355,6 @@
                 const cust = db.customers.find(c => c.id == custId);
                 if(cust) {
                     const remainingAfterDisc = Math.max(0, sub - discVal);
-                    // لا نخصم أكثر من إجمالي الفاتورة ولا أكثر من رصيد العميل
                     walletDeduction = Math.min(remainingAfterDisc, cust.walletBalance || 0);
                 }
             }
@@ -1360,63 +1379,75 @@
             if(!custSel.value) return showToast('يجب اختيار عميل', 'error');
             
             const serviceTime = document.getElementById('pos-service-time').value;
-            const meta = generateInvoiceMeta(); 
+            const payStatus = document.getElementById('pos-pay-status').value;
+            
+            // 🌟 حساب المبلغ المدفوع بناءً على الحالة المختارة 🌟
+            let finalPaidAmount = 0;
+            if(payStatus === 'مدفوع بالكامل') finalPaidAmount = t.total;
+            else if(payStatus === 'غير مدفوع') finalPaidAmount = 0;
+            else finalPaidAmount = parseFloat(document.getElementById('pos-paid-amount').value) || 0;
+
+            const userName = currentUser.name || currentUser.username;
             let custRawText = custSel.options[custSel.selectedIndex].text; 
             let cleanCustName = custRawText.split(' -')[0].trim();
-            const userName = currentUser.name || currentUser.username;
-            
-            // 🌟 خصم المحفظة يعتبر من ضمن إجمالي الخصم للحفاظ على دقة الحسابات
             const totalDiscountForInvoice = t.discVal + t.walletDeduction;
 
-            const dataObj = { 
-                inv_number: meta.invNum, 
-                date: meta.dateStr, 
-                service_time: serviceTime, 
-                customer_id: parseInt(custSel.value), 
-                customer_name: cleanCustName, 
-                items: posCart, 
-                subtotal: t.sub, 
-                discount_val: totalDiscountForInvoice, 
-                total: t.total, 
-                status: 'مدفوع بالكامل', 
-                paid_amount: t.total, 
-                created_by: userName 
-            };
-            
-            showLoading('جاري إصدار الفاتورة...');
-            const { data, error } = await supabaseClient.from('thawq_invoices').insert([dataObj]).select();
-            
-            if(data && data[0]) { 
-                db.invoices.unshift({ 
-                    id: data[0].id, 
-                    invNumber: data[0].inv_number, 
-                    date: data[0].date, 
-                    serviceTime: data[0].service_time,
-                    customerId: data[0].customer_id, 
-                    customerName: data[0].customer_name, 
-                    items: data[0].items, 
-                    subtotal: data[0].subtotal, 
-                    discountVal: data[0].discount_val, 
-                    total: data[0].total, 
-                    status: data[0].status, 
-                    paidAmount: data[0].paid_amount, 
-                    createdBy: userName 
-                }); 
+            showLoading(editingInvoiceId ? 'جاري تحديث الفاتورة...' : 'جاري إصدار الفاتورة...');
 
-                // 🌟 خصم المبلغ المستهلك من محفظة العميل في Supabase 🌟
-                if(t.walletDeduction > 0) {
-                    const cust = db.customers.find(c => c.id == parseInt(custSel.value));
-                    if(cust) {
-                        const newBalance = cust.walletBalance - t.walletDeduction;
-                        await supabaseClient.from('thawq_customers').update({ wallet_balance: newBalance }).eq('id', cust.id);
-                        cust.walletBalance = newBalance;
-                        logAction('خصم', 'محفظة عميل', `خصم ${t.walletDeduction} ريال من محفظة ${cleanCustName} لدفع فاتورة ${meta.invNum}`);
+            if (editingInvoiceId) {
+                // ================= وضع تحديث الفاتورة =================
+                const existingInv = db.invoices.find(i => i.id === editingInvoiceId);
+                const dataObj = { 
+                    service_time: serviceTime, 
+                    customer_id: parseInt(custSel.value), 
+                    customer_name: cleanCustName, 
+                    items: posCart, 
+                    subtotal: t.sub, 
+                    discount_val: totalDiscountForInvoice, 
+                    total: t.total, 
+                    status: payStatus, 
+                    paid_amount: finalPaidAmount
+                };
+                
+                const { error } = await supabaseClient.from('thawq_invoices').update(dataObj).eq('id', editingInvoiceId);
+                if (!error) {
+                    Object.assign(existingInv, {
+                        serviceTime: dataObj.service_time, customerId: dataObj.customer_id, customerName: dataObj.customer_name, items: dataObj.items, subtotal: dataObj.subtotal, discountVal: dataObj.discount_val, total: dataObj.total, status: dataObj.status, paidAmount: dataObj.paid_amount
+                    });
+                    
+                    logAction('تعديل', 'فاتورة', `تعديل شامل للفاتورة رقم ${existingInv.invNumber}`);
+                    hideLoading(); closeModal(); renderInvoices(); showToast('تم التحديث بنجاح');
+                    editingInvoiceId = null; 
+                } else {
+                    hideLoading(); showToast('حدث خطأ أثناء التحديث', 'error');
+                }
+            } else {
+                // ================= وضع إنشاء فاتورة جديدة =================
+                const meta = generateInvoiceMeta(); 
+                const dataObj = { 
+                    inv_number: meta.invNum, date: meta.dateStr, service_time: serviceTime, customer_id: parseInt(custSel.value), customer_name: cleanCustName, items: posCart, subtotal: t.sub, discount_val: totalDiscountForInvoice, total: t.total, status: payStatus, paid_amount: finalPaidAmount, created_by: userName 
+                };
+                
+                const { data } = await supabaseClient.from('thawq_invoices').insert([dataObj]).select();
+                
+                if(data && data[0]) { 
+                    db.invoices.unshift({ 
+                        id: data[0].id, invNumber: data[0].inv_number, date: data[0].date, serviceTime: data[0].service_time, customerId: data[0].customer_id, customerName: data[0].customer_name, items: data[0].items, subtotal: data[0].subtotal, discountVal: data[0].discount_val, total: data[0].total, status: data[0].status, paidAmount: data[0].paid_amount, createdBy: userName 
+                    }); 
+
+                    if(t.walletDeduction > 0) {
+                        const cust = db.customers.find(c => c.id == parseInt(custSel.value));
+                        if(cust) {
+                            const newBalance = cust.walletBalance - t.walletDeduction;
+                            await supabaseClient.from('thawq_customers').update({ wallet_balance: newBalance }).eq('id', cust.id);
+                            cust.walletBalance = newBalance;
+                            logAction('خصم', 'محفظة عميل', `خصم ${t.walletDeduction} ريال من محفظة ${cleanCustName} لدفع فاتورة ${meta.invNum}`);
+                        }
                     }
                 }
-
+                logAction('إضافة', 'فاتورة', `إصدار فاتورة جديدة رقم ${meta.invNum} للعميل ${cleanCustName}`); 
+                hideLoading(); closeModal(); renderInvoices(); showToast('تم الإصدار');
             }
-            logAction('إضافة', 'فاتورة', `إصدار فاتورة جديدة رقم ${meta.invNum} للعميل ${cleanCustName}`); 
-            hideLoading(); closeModal(); renderInvoices(); showToast('تم الإصدار');
         }
 
         // ================= Customers =================
@@ -1455,7 +1486,6 @@
             `, 'modal-lg');
         }
 
-        // 🌟 دالة شحن رصيد العميل 🌟
         async function chargeWallet(id) {
             const c = db.customers.find(x => x.id === id); if(!c) return;
             const amountStr = prompt(`أدخل المبلغ المراد إضافته لمحفظة العميل (${c.name}):\n(مثال لمكافأة الإحالة: 50)`);
@@ -1464,17 +1494,12 @@
             if(isNaN(amount) || amount <= 0) return showToast('يرجى إدخال مبلغ صحيح', 'error');
 
             const newBalance = (c.walletBalance || 0) + amount;
-            
             showLoading('جاري تحديث المحفظة...');
             await supabaseClient.from('thawq_customers').update({ wallet_balance: newBalance }).eq('id', id);
             c.walletBalance = newBalance;
             logAction('تعديل', 'محفظة عميل', `إضافة ${amount} ريال لمحفظة ${c.name}. الرصيد الجديد: ${newBalance}`);
             hideLoading();
-            
-            // إعادة رسم الشاشة لتحديث الرقم
-            viewCustomerDetails(id);
-            renderCustomers();
-            showToast(`تم شحن المحفظة بـ ${amount} ريال بنجاح!`);
+            viewCustomerDetails(id); renderCustomers(); showToast(`تم شحن المحفظة بـ ${amount} ريال بنجاح!`);
         }
 
         function openCustomerModal(id = null) {
@@ -1497,8 +1522,7 @@
                 const idx = db.customers.findIndex(x => x.id === id); if(idx > -1) db.customers[idx] = { id, walletBalance: db.customers[idx].walletBalance, ...dataObj, createdBy: db.customers[idx].createdBy }; 
                 logAction('تعديل', 'عميل', `تحديث بيانات العميل: ${n}`);
             } else { 
-                dataObj.created_by = userName;
-                dataObj.wallet_balance = 0; // الرصيد الافتراضي
+                dataObj.created_by = userName; dataObj.wallet_balance = 0;
                 const { data } = await supabaseClient.from('thawq_customers').insert([dataObj]).select(); 
                 if(data && data[0]) db.customers.push({ id: data[0].id, walletBalance: 0, createdBy: userName, ...dataObj }); 
                 logAction('إضافة', 'عميل', `تسجيل عميل جديد: ${n}`);
