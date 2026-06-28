@@ -57,6 +57,7 @@
         .icon-btn-solid.warning { background: var(--warning); }
         .icon-btn-solid.danger { background: var(--danger); }
         .icon-btn-solid.info { background: #17a2b8; }
+        .icon-btn-solid.success { background: var(--success); }
 
         .hidden { display: none !important; }
         .flex { display: flex; }
@@ -614,9 +615,12 @@
 
                 if(usersRes.data) db.users = usersRes.data;
                 if(catsRes.data) db.categories = catsRes.data.map(c => ({ id: c.id, nameAr: c.name_ar }));
-                // تحديث لجلب الكمية الكلية (totalQty)
+                
                 if(prodsRes.data) db.products = prodsRes.data.map(p => ({ id: p.id, nameAr: p.name_ar, catId: p.cat_id, price: p.price, active: p.active, image: p.image, totalQty: p.total_qty || 0, createdBy: p.created_by || 'غير محدد' }));
-                if(custsRes.data) db.customers = custsRes.data.map(c => ({ id: c.id, name: c.name, phone: c.phone, address1: c.address1, address2: c.address2, notes: c.notes, createdBy: c.created_by || 'غير محدد' }));
+                
+                // 🌟 تحديث جلب العملاء ليتضمن رصيد المحفظة (walletBalance)
+                if(custsRes.data) db.customers = custsRes.data.map(c => ({ id: c.id, name: c.name, phone: c.phone, address1: c.address1, address2: c.address2, notes: c.notes, walletBalance: c.wallet_balance || 0, createdBy: c.created_by || 'غير محدد' }));
+                
                 if(invsRes.data) db.invoices = invsRes.data.map(i => ({ id: i.id, invNumber: i.inv_number, date: i.date, serviceTime: i.service_time, customerId: i.customer_id, customerName: i.customer_name, items: i.items, subtotal: i.subtotal, discountVal: i.discount_val, total: i.total, status: i.status, paidAmount: i.paid_amount, createdBy: i.created_by || 'غير محدد' }));
                 if(expRes.data) db.expenses = expRes.data.map(e => ({ id: e.id, date: e.date, type: e.type, category: e.category, customCategory: e.custom_category, amount: e.amount, method: e.method, notes: e.notes, image: e.image, createdBy: e.created_by || 'غير محدد' }));
                 
@@ -771,7 +775,7 @@
             if(id==='dashboard') renderDashboard(); if(id==='performance') renderPerformance(); if(id==='expenses') renderExpenses();
             if(id==='invoices') renderInvoices(); if(id==='customers') renderCustomers(); if(id==='products') { renderProducts(); loadCatFilter(); }
             if(id==='users') renderUsers(); if(id==='syslogs') fetchAndRenderSyslogs(); if(id==='settings') loadSettingsUI();
-            if(id==='stock') renderStock(); // إضافة الاستدعاء الخاص بشاشة المخزون
+            if(id==='stock') renderStock();
         }
 
         // ================= Dashboard =================
@@ -1168,7 +1172,7 @@
             </div>
             
             <div style="margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                <select id="pos-cust" style="flex:1; min-width:150px; margin:0;">${custOpts}</select>
+                <select id="pos-cust" style="flex:1; min-width:150px; margin:0;" onchange="posCustomerChanged()">${custOpts}</select>
                 <button class="icon-btn-solid info" style="margin:0;" onclick="toggleQuickAddCustomer()" title="إضافة عميل جديد سريع"><i class="fas fa-user-plus"></i></button>
                 <select id="pos-cat-filter-modal" style="width:150px; cursor:pointer; margin:0;" onchange="renderPOSProductsModal()">${catOpts}</select>
             </div>
@@ -1192,9 +1196,18 @@
 
                         <div class="flex" style="justify-content:space-between;"><span>المجموع:</span> <span id="pos-sub" class="en-numbers">0</span></div>
                         <div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;">
-                            <span>الخصم (%):</span> 
+                            <span>الخصم الإضافي (%):</span> 
                             <input type="number" id="pos-disc" class="en-numbers" style="width:60px; padding:5px; margin:0; text-align:center;" value="0" min="0" max="100" onkeyup="updateCartTotals()" onchange="updateCartTotals()">
                         </div>
+
+                        <div class="flex hidden" id="pos-wallet-container" style="justify-content:space-between; margin:8px 0; align-items:center; background: rgba(40, 167, 69, 0.1); padding: 8px; border-radius: 6px; border: 1px solid var(--success);">
+                            <label style="margin:0; color:var(--success); font-weight:bold; cursor:pointer;" class="flex">
+                                <input type="checkbox" id="pos-use-wallet" style="width:auto; margin:0 0 0 8px;" onchange="updateCartTotals()"> 
+                                استخدام المحفظة (<span id="pos-wallet-amount" class="en-numbers">0</span>)
+                            </label>
+                            <span id="pos-wallet-deduction" class="en-numbers" style="color:var(--danger)">0.00</span>
+                        </div>
+
                         <hr style="margin:10px 0; border-top:1px solid var(--border);">
                         <div class="flex" style="justify-content:space-between; font-weight:bold; font-size:1.2rem; color:var(--primary);">
                             <span>الإجمالي:</span> <span id="pos-total" class="en-numbers">0</span>
@@ -1205,9 +1218,28 @@
                 </div>
             </div>`, 'modal-lg');
             
-            renderPOSProductsModal(); updateCartTotals();
+            renderPOSProductsModal(); 
+            posCustomerChanged(); // لفحص محفظة أول عميل في القائمة
+            updateCartTotals();
         }
         
+        // 🌟 دالة فحص وتفعيل المحفظة عند تغيير العميل في الفاتورة 🌟
+        function posCustomerChanged() {
+            const custId = document.getElementById('pos-cust').value;
+            const cust = db.customers.find(c => c.id == custId);
+            const walletContainer = document.getElementById('pos-wallet-container');
+            const walletCheckbox = document.getElementById('pos-use-wallet');
+            
+            if(cust && cust.walletBalance > 0) {
+                walletContainer.classList.remove('hidden');
+                document.getElementById('pos-wallet-amount').innerText = cust.walletBalance.toFixed(2);
+            } else {
+                walletContainer.classList.add('hidden');
+                if(walletCheckbox) walletCheckbox.checked = false;
+            }
+            updateCartTotals();
+        }
+
         function toggleQuickAddCustomer() {
             const div = document.getElementById('quick-add-cust-div');
             if(div) div.classList.toggle('hidden');
@@ -1219,7 +1251,7 @@
             if(!name || !phone) return showToast('الرجاء إدخال الاسم ورقم الجوال', 'error');
 
             const userName = currentUser.name || currentUser.username;
-            const dataObj = { name: name, phone: phone, created_by: userName };
+            const dataObj = { name: name, phone: phone, created_by: userName, wallet_balance: 0 }; // إضافة المحفظة للعميل السريع
 
             showLoading('جاري الحفظ...');
             const { data, error } = await supabaseClient.from('thawq_customers').insert([dataObj]).select();
@@ -1231,7 +1263,7 @@
             }
 
             if(data && data[0]) {
-                const newCust = { id: data[0].id, createdBy: userName, ...dataObj };
+                const newCust = { id: data[0].id, createdBy: userName, walletBalance: 0, ...dataObj };
                 db.customers.push(newCust);
                 logAction('إضافة', 'عميل', `تسجيل عميل جديد من شاشة الفاتورة: ${name}`);
 
@@ -1248,28 +1280,25 @@
 
                 showToast('تم حفظ العميل بنجاح');
                 renderCustomers();
+                posCustomerChanged();
             }
         }
 
-        // دالة عرض المنتجات في شاشة الفاتورة (محدثة لدعم المخزون الذكي)
         function renderPOSProductsModal() { 
             const grid = document.getElementById('pos-products-grid'); 
             const filter = document.getElementById('pos-cat-filter-modal').value; 
-            const targetDateStr = document.getElementById('pos-service-time').value; // قراءة التاريخ الذي اختاره الكاشير
+            const targetDateStr = document.getElementById('pos-service-time').value;
 
             grid.innerHTML = ''; 
             db.products.filter(p => p.active && (filter === 'all' || p.catId == filter)).forEach(p => { 
                 const img = p.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; 
                 
-                // حساب المتاح بناءً على الحجوزات السابقة لنفس اليوم
                 const available = getAvailableQty(p.id, targetDateStr);
-                // خصم ما هو موجود حالياً في السلة المفتوحة
                 const currentCartItem = posCart.find(i => i.id === p.id);
                 const cartQty = currentCartItem ? currentCartItem.qty : 0;
                 const netAvailable = available - cartQty;
 
                 const isOutOfStock = netAvailable <= 0;
-                // تغيير شكل البطاقة إذا نفذت الكمية
                 const cardStyle = isOutOfStock ? 'opacity:0.5; filter:grayscale(1); cursor:not-allowed;' : 'cursor:pointer;';
                 const clickAction = isOutOfStock ? `showToast('الكمية نفذت لهذا اليوم!', 'error')` : `addToCart(${p.id}, '${p.nameAr}', ${p.price})`;
                 const stockColor = isOutOfStock ? 'var(--danger)' : 'var(--success)';
@@ -1288,8 +1317,41 @@
 
         function addToCart(id, name, price) { const ex = posCart.find(i => i.id === id); if(ex) ex.qty++; else posCart.push({ id, name, price, qty: 1 }); renderCart(); renderPOSProductsModal(); }
         function changeQty(id, d) { const item = posCart.find(i => i.id === id); if(item) { item.qty += d; if(item.qty <= 0) posCart = posCart.filter(i => i.id !== id); renderCart(); renderPOSProductsModal(); } }
+        
         function renderCart() { const list = document.getElementById('pos-cart-items'); list.innerHTML = ''; posCart.forEach(i => { list.innerHTML += `<div class="cart-row"><div style="flex:1;">${i.name}</div><div style="display:flex; gap:5px; align-items:center;"><button class="cart-qty-btn" onclick="changeQty(${i.id}, 1)">+</button><span class="en-numbers">${i.qty}</span><button class="cart-qty-btn" onclick="changeQty(${i.id}, -1)">-</button></div><div style="width:60px; text-align:left;" class="en-numbers">${(i.price * i.qty).toFixed(2)}</div></div>`; }); updateCartTotals(); }
-        function updateCartTotals() { const sub = posCart.reduce((s,i)=>s+(i.price*i.qty),0); const discInput = document.getElementById('pos-disc'); const discPercent = parseFloat(discInput ? discInput.value : 0) || 0; const discVal = sub * (discPercent / 100); const total = Math.max(0, sub - discVal); if(document.getElementById('pos-sub')) { document.getElementById('pos-sub').innerText = sub.toFixed(2); document.getElementById('pos-total').innerText = total.toFixed(2); } return { sub, discVal, total }; }
+        
+        // 🌟 تحديث حاسبة السلة لتدعم خصم المحفظة 🌟
+        function updateCartTotals() { 
+            const sub = posCart.reduce((s,i)=>s+(i.price*i.qty),0); 
+            const discInput = document.getElementById('pos-disc'); 
+            const discPercent = parseFloat(discInput ? discInput.value : 0) || 0; 
+            let discVal = sub * (discPercent / 100); 
+            
+            let walletDeduction = 0;
+            const useWalletCheckbox = document.getElementById('pos-use-wallet');
+            
+            if(useWalletCheckbox && useWalletCheckbox.checked) {
+                const custId = document.getElementById('pos-cust').value;
+                const cust = db.customers.find(c => c.id == custId);
+                if(cust) {
+                    const remainingAfterDisc = Math.max(0, sub - discVal);
+                    // لا نخصم أكثر من إجمالي الفاتورة ولا أكثر من رصيد العميل
+                    walletDeduction = Math.min(remainingAfterDisc, cust.walletBalance || 0);
+                }
+            }
+            
+            if(document.getElementById('pos-wallet-deduction')) {
+                document.getElementById('pos-wallet-deduction').innerText = '-' + walletDeduction.toFixed(2);
+            }
+
+            const total = Math.max(0, sub - discVal - walletDeduction); 
+            
+            if(document.getElementById('pos-sub')) { 
+                document.getElementById('pos-sub').innerText = sub.toFixed(2); 
+                document.getElementById('pos-total').innerText = total.toFixed(2); 
+            } 
+            return { sub, discVal, walletDeduction, total }; 
+        }
 
         async function checkout() {
             if(posCart.length === 0) return showToast('السلة فارغة', 'error'); 
@@ -1297,23 +1359,24 @@
             const custSel = document.getElementById('pos-cust'); 
             if(!custSel.value) return showToast('يجب اختيار عميل', 'error');
             
-            // 🌟 استخراج وقت الخدمة من الواجهة 🌟
             const serviceTime = document.getElementById('pos-service-time').value;
-
             const meta = generateInvoiceMeta(); 
             let custRawText = custSel.options[custSel.selectedIndex].text; 
             let cleanCustName = custRawText.split(' -')[0].trim();
             const userName = currentUser.name || currentUser.username;
             
+            // 🌟 خصم المحفظة يعتبر من ضمن إجمالي الخصم للحفاظ على دقة الحسابات
+            const totalDiscountForInvoice = t.discVal + t.walletDeduction;
+
             const dataObj = { 
                 inv_number: meta.invNum, 
                 date: meta.dateStr, 
-                service_time: serviceTime, // إرسال الوقت لقاعدة البيانات
+                service_time: serviceTime, 
                 customer_id: parseInt(custSel.value), 
                 customer_name: cleanCustName, 
                 items: posCart, 
                 subtotal: t.sub, 
-                discount_val: t.discVal, 
+                discount_val: totalDiscountForInvoice, 
                 total: t.total, 
                 status: 'مدفوع بالكامل', 
                 paid_amount: t.total, 
@@ -1321,13 +1384,14 @@
             };
             
             showLoading('جاري إصدار الفاتورة...');
-            const { data } = await supabaseClient.from('thawq_invoices').insert([dataObj]).select();
+            const { data, error } = await supabaseClient.from('thawq_invoices').insert([dataObj]).select();
+            
             if(data && data[0]) { 
                 db.invoices.unshift({ 
                     id: data[0].id, 
                     invNumber: data[0].inv_number, 
                     date: data[0].date, 
-                    serviceTime: data[0].service_time, // الإضافة للذاكرة المحلية
+                    serviceTime: data[0].service_time,
                     customerId: data[0].customer_id, 
                     customerName: data[0].customer_name, 
                     items: data[0].items, 
@@ -1338,6 +1402,18 @@
                     paidAmount: data[0].paid_amount, 
                     createdBy: userName 
                 }); 
+
+                // 🌟 خصم المبلغ المستهلك من محفظة العميل في Supabase 🌟
+                if(t.walletDeduction > 0) {
+                    const cust = db.customers.find(c => c.id == parseInt(custSel.value));
+                    if(cust) {
+                        const newBalance = cust.walletBalance - t.walletDeduction;
+                        await supabaseClient.from('thawq_customers').update({ wallet_balance: newBalance }).eq('id', cust.id);
+                        cust.walletBalance = newBalance;
+                        logAction('خصم', 'محفظة عميل', `خصم ${t.walletDeduction} ريال من محفظة ${cleanCustName} لدفع فاتورة ${meta.invNum}`);
+                    }
+                }
+
             }
             logAction('إضافة', 'فاتورة', `إصدار فاتورة جديدة رقم ${meta.invNum} للعميل ${cleanCustName}`); 
             hideLoading(); closeModal(); renderInvoices(); showToast('تم الإصدار');
@@ -1359,14 +1435,46 @@
                 <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
                     <h3 style="color:var(--primary); margin:0;">ملف العميل: ${c.name}</h3>
                     <div style="display:flex; gap:10px; align-items:center;">
-                        <div style="display:flex; gap:5px;"><button class="icon-btn-solid warning" onclick="openCustomerModal(${c.id})"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteCustomer(${c.id})"><i class="fas fa-trash"></i></button>` : ''}</div>
+                        <div style="display:flex; gap:5px;">
+                            <button class="icon-btn-solid success" style="background:var(--success);" onclick="chargeWallet(${c.id})" title="شحن الرصيد (مكافأة)"><i class="fas fa-wallet"></i></button>
+                            <button class="icon-btn-solid warning" onclick="openCustomerModal(${c.id})"><i class="fas fa-edit"></i></button>
+                            ${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteCustomer(${c.id})"><i class="fas fa-trash"></i></button>` : ''}
+                        </div>
                         <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
-                <div class="grid grid-2" style="font-size:0.95rem; margin-bottom:20px;"><div><strong>الجوال:</strong> <span class="en-numbers" style="float:left;">${c.phone||'-'}</span></div><div><strong>العنوان الأساسي:</strong><br>${c.address1||'-'}</div><div><strong>العنوان الإضافي:</strong><br>${c.address2||'-'}</div><div style="grid-column: 1 / -1;"><strong>ملاحظات:</strong><br><p style="background:rgba(0,0,0,0.02); padding:10px; border-radius:6px; min-height:40px;">${c.notes||'لا توجد ملاحظات'}</p></div></div>
+                <div class="grid grid-2" style="font-size:0.95rem; margin-bottom:20px;">
+                    <div><strong>الجوال:</strong> <span class="en-numbers" style="float:left;">${c.phone||'-'}</span></div>
+                    <div><strong>رصيد المحفظة:</strong> <span class="en-numbers" style="float:left; color:var(--success); font-weight:bold;">${c.walletBalance || 0} SAR</span></div>
+                    <div><strong>العنوان الأساسي:</strong><br>${c.address1||'-'}</div>
+                    <div><strong>العنوان الإضافي:</strong><br>${c.address2||'-'}</div>
+                    <div style="grid-column: 1 / -1;"><strong>ملاحظات:</strong><br><p style="background:rgba(0,0,0,0.02); padding:10px; border-radius:6px; min-height:40px;">${c.notes||'لا توجد ملاحظات'}</p></div>
+                </div>
                 <h4 style="color:var(--primary); margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:5px;">سجل الطلبات</h4>
                 <div class="table-responsive"><table style="font-size:0.9rem; margin-top:0; min-width:100%;"><thead><tr><th style="text-align:right">رقم الفاتورة</th><th style="text-align:right">التاريخ</th><th style="text-align:center">المجموع</th><th style="text-align:right">الحالة</th></tr></thead><tbody>${historyHtml}</tbody></table></div>
             `, 'modal-lg');
+        }
+
+        // 🌟 دالة شحن رصيد العميل 🌟
+        async function chargeWallet(id) {
+            const c = db.customers.find(x => x.id === id); if(!c) return;
+            const amountStr = prompt(`أدخل المبلغ المراد إضافته لمحفظة العميل (${c.name}):\n(مثال لمكافأة الإحالة: 50)`);
+            if(!amountStr) return;
+            const amount = parseFloat(amountStr);
+            if(isNaN(amount) || amount <= 0) return showToast('يرجى إدخال مبلغ صحيح', 'error');
+
+            const newBalance = (c.walletBalance || 0) + amount;
+            
+            showLoading('جاري تحديث المحفظة...');
+            await supabaseClient.from('thawq_customers').update({ wallet_balance: newBalance }).eq('id', id);
+            c.walletBalance = newBalance;
+            logAction('تعديل', 'محفظة عميل', `إضافة ${amount} ريال لمحفظة ${c.name}. الرصيد الجديد: ${newBalance}`);
+            hideLoading();
+            
+            // إعادة رسم الشاشة لتحديث الرقم
+            viewCustomerDetails(id);
+            renderCustomers();
+            showToast(`تم شحن المحفظة بـ ${amount} ريال بنجاح!`);
         }
 
         function openCustomerModal(id = null) {
@@ -1386,12 +1494,13 @@
             showLoading('جاري الحفظ...');
             if(id) { 
                 await supabaseClient.from('thawq_customers').update(dataObj).eq('id', id); 
-                const idx = db.customers.findIndex(x => x.id === id); if(idx > -1) db.customers[idx] = { id, ...dataObj, createdBy: db.customers[idx].createdBy }; 
+                const idx = db.customers.findIndex(x => x.id === id); if(idx > -1) db.customers[idx] = { id, walletBalance: db.customers[idx].walletBalance, ...dataObj, createdBy: db.customers[idx].createdBy }; 
                 logAction('تعديل', 'عميل', `تحديث بيانات العميل: ${n}`);
             } else { 
                 dataObj.created_by = userName;
+                dataObj.wallet_balance = 0; // الرصيد الافتراضي
                 const { data } = await supabaseClient.from('thawq_customers').insert([dataObj]).select(); 
-                if(data && data[0]) db.customers.push({ id: data[0].id, createdBy: userName, ...dataObj }); 
+                if(data && data[0]) db.customers.push({ id: data[0].id, walletBalance: 0, createdBy: userName, ...dataObj }); 
                 logAction('إضافة', 'عميل', `تسجيل عميل جديد: ${n}`);
             }
             hideLoading(); renderCustomers(); if(id) viewCustomerDetails(id); else closeModal(); showToast('تم الحفظ');
