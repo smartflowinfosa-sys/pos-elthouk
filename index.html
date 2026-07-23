@@ -263,6 +263,7 @@
                                         <th style="text-align:center">المجموع</th>
                                         <th style="text-align:center">الحالة</th>
                                         <th style="text-align:center">بواسطة</th>
+                                        <th style="text-align:center">إجراءات</th> <!-- 🌟 الزر أصبح في عمود مستقل -->
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -423,6 +424,7 @@
                                         <th style="text-align:center">المجموع</th>
                                         <th style="text-align:center">الحالة</th>
                                         <th style="text-align:center">بواسطة</th>
+                                        <th style="text-align:center">إجراءات</th> <!-- 🌟 الزر أصبح في عمود مستقل -->
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -853,9 +855,10 @@
                     <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
                     <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
                     <td style="text-align:center"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
+                    <td style="text-align:center"><button class="icon-btn-solid warning" style="display:inline-flex;" onclick="event.stopPropagation(); editFullInvoice(${inv.id})" title="تعديل الفاتورة"><i class="fas fa-edit"></i></button></td>
                 </tr>`;
             });
-            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد فواتير سابقة مطابقة</td></tr>';
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد فواتير سابقة مطابقة</td></tr>';
         }
 
         // ================= Performance Dashboard =================
@@ -1096,9 +1099,10 @@
                     <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
                     <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
                     <td style="text-align:center"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
+                    <td style="text-align:center"><button class="icon-btn-solid warning" style="display:inline-flex;" onclick="event.stopPropagation(); editFullInvoice(${inv.id})" title="تعديل الفاتورة"><i class="fas fa-edit"></i></button></td>
                 </tr>`;
             });
-            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد فواتير حالية أو قادمة</td></tr>';
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد فواتير حالية أو قادمة</td></tr>';
         }
         
         function viewInvoiceDetails(id) {
