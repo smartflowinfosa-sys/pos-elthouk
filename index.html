@@ -170,12 +170,13 @@
             body * { visibility: hidden; }
             #print-view, #print-view * { visibility: visible; }
             #expense-print-view, #expense-print-view * { visibility: visible; }
-            #print-view, #expense-print-view { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; color: black; }
+            #perf-print-view, #perf-print-view * { visibility: visible; }
+            #print-view, #expense-print-view, #perf-print-view { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; color: black; }
             #app-view, #login-view, #cloud-loader { display: none !important; }
         }
         
-        #print-view, #expense-print-view { display: none; text-align: center; max-width: 800px; margin: 0 auto; background: white; color: black; padding: 20px; }
-        #print-view.active-print, #expense-print-view.active-print { display: block; }
+        #print-view, #expense-print-view, #perf-print-view { display: none; text-align: center; max-width: 800px; margin: 0 auto; background: white; color: black; padding: 20px; }
+        #print-view.active-print, #expense-print-view.active-print, #perf-print-view.active-print { display: block; }
         .invoice-print-header { border-bottom: 2px dashed #000; padding-bottom: 20px; margin-bottom: 20px; }
         .invoice-print-table th, .invoice-print-table td { border: 1px solid #000; padding: 8px; }
 
@@ -245,10 +246,10 @@
                         
                         <div class="flex" style="gap:5px; align-items:center; flex-wrap:wrap;">
                             <label style="margin:0; font-size:0.9rem; font-weight:bold;">من:</label>
-                            <input type="date" id="past-inv-date-start" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; width:130px;" onchange="renderDashboard()">
+                            <input type="text" id="past-inv-date-start" class="en-numbers-center" placeholder="تاريخ البداية" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')" style="margin:0; padding:5px; width:130px;" onchange="renderDashboard()">
                             <label style="margin:0; font-size:0.9rem; font-weight:bold;">إلى:</label>
-                            <input type="date" id="past-inv-date-end" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; width:130px;" onchange="renderDashboard()">
-                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.85rem;" onclick="document.getElementById('past-inv-date-start').value=''; document.getElementById('past-inv-date-end').value=''; renderDashboard();">الكل</button>
+                            <input type="text" id="past-inv-date-end" class="en-numbers-center" placeholder="تاريخ النهاية" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')" style="margin:0; padding:5px; width:130px;" onchange="renderDashboard()">
+                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.85rem;" onclick="document.getElementById('past-inv-date-start').value=''; document.getElementById('past-inv-date-start').type='text'; document.getElementById('past-inv-date-end').value=''; document.getElementById('past-inv-date-end').type='text'; renderDashboard();">الكل</button>
                         </div>
                     </div>
                     <div class="card" style="padding: 10px;">
@@ -257,13 +258,13 @@
                                 <thead>
                                     <tr>
                                         <th style="text-align:right">رقم الفاتورة</th>
-                                        <th style="text-align:right">تاريخ الإصدار</th>
+                                        <th style="text-align:center">تاريخ الإصدار</th> <!-- 🌟 توسيط هنا -->
                                         <th style="text-align:right">وقت الخدمة</th>
                                         <th style="text-align:right">العميل</th>
                                         <th style="text-align:center">المجموع</th>
                                         <th style="text-align:center">الحالة</th>
                                         <th style="text-align:center">بواسطة</th>
-                                        <th style="text-align:center">إجراءات</th> <!-- 🌟 الزر أصبح في عمود مستقل -->
+                                        <!-- 🌟 تمت إزالة عمود إجراءات -->
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -282,7 +283,21 @@
                                 <option value="today">اليوم</option>
                                 <option value="week">هذا الأسبوع</option>
                                 <option value="month">هذا الشهر</option>
+                                <option value="custom">مخصص</option> <!-- 🌟 خيار الفلتر المخصص -->
                             </select>
+                            <button class="btn btn-outline" onclick="printPerformanceReport()"><i class="fas fa-file-pdf"></i> إنشاء تقرير</button>
+                        </div>
+                    </div>
+
+                    <!-- 🌟 إظهار حقول التاريخ المخصصة عند اختيار "مخصص" -->
+                    <div id="perf-custom-date" class="hidden flex" style="gap:10px; justify-content:flex-end; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:15px;">
+                        <div class="flex" style="align-items:center; gap:5px;">
+                            <label style="margin:0; font-size:0.9rem; font-weight:bold;">من:</label>
+                            <input type="text" id="perf-date-start" class="en-numbers-center" placeholder="تاريخ البداية" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')" style="margin:0; padding:5px; height:auto; width:130px;" onchange="renderPerformance()">
+                        </div>
+                        <div class="flex" style="align-items:center; gap:5px;">
+                            <label style="margin:0; font-size:0.9rem; font-weight:bold;">إلى:</label>
+                            <input type="text" id="perf-date-end" class="en-numbers-center" placeholder="تاريخ النهاية" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')" style="margin:0; padding:5px; height:auto; width:130px;" onchange="renderPerformance()">
                         </div>
                     </div>
 
@@ -357,6 +372,7 @@
                                     <option value="today">اليوم</option>
                                     <option value="week">هذا الأسبوع</option>
                                     <option value="month" selected>هذا الشهر</option>
+                                    <option value="custom">مخصص</option>
                                     <option value="all">الكل</option>
                                 </select>
                             </div>
@@ -364,12 +380,12 @@
                         
                         <div id="exp-custom-date-container" class="hidden flex" style="gap:10px; justify-content:flex-end; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:15px;">
                             <div class="flex" style="align-items:center; gap:5px;">
-                                <label style="margin:0; font-size:0.9rem;">من:</label>
-                                <input type="date" id="exp-date-start" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; height:auto;" onchange="renderExpensesDashboard()">
+                                <label style="margin:0; font-size:0.9rem; font-weight:bold;">من:</label>
+                                <input type="text" id="exp-date-start" class="en-numbers-center" placeholder="اختر التاريخ" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')" style="margin:0; padding:5px; height:auto; width:130px;" onchange="renderExpensesDashboard()">
                             </div>
                             <div class="flex" style="align-items:center; gap:5px;">
-                                <label style="margin:0; font-size:0.9rem;">إلى:</label>
-                                <input type="date" id="exp-date-end" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; height:auto;" onchange="renderExpensesDashboard()">
+                                <label style="margin:0; font-size:0.9rem; font-weight:bold;">إلى:</label>
+                                <input type="text" id="exp-date-end" class="en-numbers-center" placeholder="اختر التاريخ" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')" style="margin:0; padding:5px; height:auto; width:130px;" onchange="renderExpensesDashboard()">
                             </div>
                         </div>
 
@@ -418,13 +434,13 @@
                                 <thead>
                                     <tr>
                                         <th style="text-align:right">رقم الفاتورة</th>
-                                        <th style="text-align:right">تاريخ الإصدار</th>
+                                        <th style="text-align:center">تاريخ الإصدار</th> <!-- 🌟 توسيط هنا -->
                                         <th style="text-align:right">وقت الخدمة</th>
                                         <th style="text-align:right">العميل</th>
                                         <th style="text-align:center">المجموع</th>
                                         <th style="text-align:center">الحالة</th>
                                         <th style="text-align:center">بواسطة</th>
-                                        <th style="text-align:center">إجراءات</th> <!-- 🌟 الزر أصبح في عمود مستقل -->
+                                        <!-- 🌟 تمت إزالة عمود إجراءات -->
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -523,6 +539,7 @@
         </div>
     </div>
 
+    <!-- ================= Print Layouts ================= -->
     <div id="print-view">
         <div class="invoice-print-header" dir="rtl">
             <h1 id="print-store-name" style="font-family: 'Tajawal', sans-serif;">الذوق للمناسبات</h1>
@@ -581,6 +598,36 @@
             <p>إجمالي المصروفات الثابتة: <span id="exp-print-fixed" class="en-numbers"></span> SAR</p>
             <p>إجمالي المصروفات المتغيرة: <span id="exp-print-var" class="en-numbers"></span> SAR</p>
             <h3 style="margin-top:10px;">المجموع الكلي: <span id="exp-print-total" class="en-numbers"></span> SAR</h3>
+        </div>
+    </div>
+
+    <!-- 🌟 تقرير طباعة الأداء والمبيعات PDF -->
+    <div id="perf-print-view" dir="rtl">
+        <div class="invoice-print-header">
+            <h1 style="font-family: 'Tajawal', sans-serif;">الذوق للمناسبات</h1>
+            <h2 style="margin:10px 0;">تقرير الأداء والمبيعات</h2>
+            <p style="font-size:1.1rem;">الفترة: <strong id="perf-print-period" class="en-numbers"></strong></p>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; margin:20px 0; font-size:1.2rem; border:2px solid #000; padding:15px; border-radius:8px;">
+            <div style="text-align:center;">إجمالي المبيعات<br><strong id="perf-print-total" class="en-numbers">0</strong> SAR</div>
+            <div style="text-align:center; border-right:1px solid #000; padding-right:15px;">عدد الفواتير<br><strong id="perf-print-count" class="en-numbers">0</strong></div>
+            <div style="text-align:center; border-right:1px solid #000; padding-right:15px;">متوسط الفاتورة<br><strong id="perf-print-avg" class="en-numbers">0</strong> SAR</div>
+        </div>
+
+        <h3 style="text-align:right; margin-bottom:10px; margin-top:30px;">المبيعات حسب الصنف:</h3>
+        <table class="invoice-print-table" style="width:100%; text-align:center; font-size:1rem;">
+            <thead>
+                <tr>
+                    <th style="text-align:right">الصنف</th>
+                    <th style="text-align:center">إجمالي المبيعات (SAR)</th>
+                </tr>
+            </thead>
+            <tbody id="perf-print-items"></tbody>
+        </table>
+        
+        <div style="margin-top: 40px; text-align: center; font-size: 0.9rem; color: #555;">
+            تم إصدار هذا التقرير من نظام المبيعات
         </div>
     </div>
 
@@ -849,27 +896,43 @@
 
                 tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
                     <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
-                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${displayIssueDate}</span></td>
+                    <td style="text-align:center"><span class="en-numbers-center" style="font-size:0.85rem; color:var(--text-muted);">${displayIssueDate}</span></td>
                     <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem; font-weight:bold; color:var(--primary); background: rgba(139, 58, 42, 0.05); padding: 4px 8px; border-radius: 4px;">${sTime}</span></td>
                     <td style="text-align:right">${inv.customerName}</td>
                     <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
                     <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
                     <td style="text-align:center"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
-                    <td style="text-align:center"><button class="icon-btn-solid warning" style="display:inline-flex;" onclick="event.stopPropagation(); editFullInvoice(${inv.id})" title="تعديل الفاتورة"><i class="fas fa-edit"></i></button></td>
                 </tr>`;
             });
-            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد فواتير سابقة مطابقة</td></tr>';
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد فواتير سابقة مطابقة</td></tr>';
         }
 
         // ================= Performance Dashboard =================
         function renderPerformance() {
-            const filter = document.getElementById('perf-date-filter').value; const now = new Date();
+            const filter = document.getElementById('perf-date-filter').value; 
+            const now = new Date();
+            
+            // 🌟 إظهار أو إخفاء حقول التاريخ المخصصة
+            document.getElementById('perf-custom-date').classList.toggle('hidden', filter !== 'custom');
+
+            let startDate = null, endDate = null;
+            if (filter === 'today') { startDate = new Date(now.setHours(0,0,0,0)); endDate = new Date(now.setHours(23,59,59,999)); } 
+            else if (filter === 'week') { const firstDay = new Date(now.setDate(now.getDate() - now.getDay())); startDate = new Date(firstDay.setHours(0,0,0,0)); endDate = new Date(); } 
+            else if (filter === 'month') { startDate = new Date(now.getFullYear(), now.getMonth(), 1); endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59); } 
+            else if (filter === 'custom') { 
+                const s = document.getElementById('perf-date-start').value; 
+                const e = document.getElementById('perf-date-end').value; 
+                if(s) startDate = new Date(s); 
+                if(e) endDate = new Date(e + "T23:59:59"); 
+            }
+
             let filteredInvoices = db.invoices.filter(inv => {
-                if (filter === 'all') return true; const invDate = new Date(inv.date); if(isNaN(invDate)) return true;
-                if (filter === 'today') return invDate.toDateString() === now.toDateString();
-                if (filter === 'week') { const diffTime = Math.abs(now - invDate); return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) <= 7; }
-                if (filter === 'month') return invDate.getMonth() === now.getMonth() && invDate.getFullYear() === now.getFullYear(); return true;
+                if (filter === 'all') return true; 
+                const invDate = new Date(inv.date); 
+                if(isNaN(invDate)) return true;
+                return (!startDate || invDate >= startDate) && (!endDate || invDate <= endDate);
             });
+            
             const total = filteredInvoices.reduce((s,i)=>s+i.total,0);
             document.getElementById('perf-total-sales').innerText = total.toFixed(2) + ' SAR'; document.getElementById('perf-inv-count').innerText = filteredInvoices.length; document.getElementById('perf-avg').innerText = (filteredInvoices.length ? (total/filteredInvoices.length) : 0).toFixed(2) + ' SAR';
 
@@ -880,6 +943,61 @@
             document.getElementById('perf-breakeven-text').innerText = percent + '%'; document.getElementById('perf-breakeven-text').style.color = percent >= 100 ? 'var(--success)' : 'var(--primary)';
             if(charts.perfBreakEven) charts.perfBreakEven.destroy(); charts.perfBreakEven = new Chart(document.getElementById('perfBreakEvenChart').getContext('2d'), { type: 'doughnut', data: { labels: ['المحقق (SAR)', 'المتبقي للهدف (SAR)'], datasets: [{ data: achieved === 0 && remaining === 0 ? [0, 1] : [achieved, remaining], backgroundColor: percent >= 100 ? ['#28a745', '#E2D5C8'] : ['#8B3A2A', '#E2D5C8'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', rtl: true } } } });
             document.getElementById('perf-breakeven-desc').innerText = `تم تحقيق ${achieved.toFixed(2)} من أصل ${target.toFixed(2)} SAR`;
+        }
+
+        // 🌟 وظيفة إنشاء تقرير الأداء والمبيعات PDF
+        function printPerformanceReport() {
+            const filter = document.getElementById('perf-date-filter').value; 
+            const now = new Date();
+            let startDate = null, endDate = null; let periodText = '';
+            
+            if (filter === 'all') { periodText = 'كل الأوقات'; }
+            else if (filter === 'today') { startDate = new Date(now.setHours(0,0,0,0)); endDate = new Date(now.setHours(23,59,59,999)); periodText = 'اليوم'; } 
+            else if (filter === 'week') { const firstDay = new Date(now.setDate(now.getDate() - now.getDay())); startDate = new Date(firstDay.setHours(0,0,0,0)); endDate = new Date(); periodText = 'هذا الأسبوع'; } 
+            else if (filter === 'month') { startDate = new Date(now.getFullYear(), now.getMonth(), 1); endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59); periodText = 'هذا الشهر'; } 
+            else if (filter === 'custom') { 
+                const s = document.getElementById('perf-date-start').value; 
+                const e = document.getElementById('perf-date-end').value; 
+                if(s) startDate = new Date(s); 
+                if(e) endDate = new Date(e + "T23:59:59"); 
+                periodText = `من ${s || '*'} إلى ${e || '*'}`;
+            }
+
+            let filteredInvoices = db.invoices.filter(inv => {
+                if (filter === 'all') return true; 
+                const invDate = new Date(inv.date); 
+                if(isNaN(invDate)) return true;
+                return (!startDate || invDate >= startDate) && (!endDate || invDate <= endDate);
+            });
+            
+            const total = filteredInvoices.reduce((s,i)=>s+i.total,0);
+            let productSales = {}; 
+            filteredInvoices.forEach(inv => { 
+                inv.items.forEach(item => { 
+                    if(!productSales[item.name]) productSales[item.name] = 0; 
+                    productSales[item.name] += (item.price * item.qty); 
+                }); 
+            });
+
+            document.getElementById('perf-print-period').innerText = periodText;
+            document.getElementById('perf-print-total').innerText = total.toFixed(2);
+            document.getElementById('perf-print-count').innerText = filteredInvoices.length;
+            document.getElementById('perf-print-avg').innerText = (filteredInvoices.length ? (total/filteredInvoices.length) : 0).toFixed(2);
+
+            const tbody = document.getElementById('perf-print-items');
+            tbody.innerHTML = '';
+            if(Object.keys(productSales).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">لا توجد مبيعات لهذه الفترة</td></tr>';
+            } else {
+                for(let item in productSales) {
+                    tbody.innerHTML += `<tr><td style="text-align:right">${item}</td><td style="text-align:center" class="en-numbers">${productSales[item].toFixed(2)}</td></tr>`;
+                }
+            }
+
+            logAction('طباعة', 'أداء ومبيعات', 'طباعة تقرير الأداء والمبيعات'); 
+            document.getElementById('perf-print-view').classList.add('active-print'); 
+            window.print(); 
+            setTimeout(() => document.getElementById('perf-print-view').classList.remove('active-print'), 1000);
         }
 
         async function updateBreakEvenTarget() {
@@ -931,7 +1049,7 @@
                     <h3 style="color:var(--primary); margin:0;">${id ? 'تعديل المصروف' : 'إضافة مصروف جديد'}</h3>
                     <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="grid grid-2"><div><label>التاريخ</label><input type="date" id="exp-date" value="${e.date}" class="en-numbers" lang="en-GB" dir="ltr" style="text-align:right;" required><label>النوع</label><select id="exp-type"><option value="ثابت" ${e.type==='ثابت'?'selected':''}>ثابت</option><option value="متغير" ${e.type==='متغير'?'selected':''}>متغير</option><option value="أصل" ${e.type==='أصل'?'selected':''}>أصل</option></select><label>الفئة</label><select id="exp-cat" onchange="toggleExpCustomCat(this.value)"><option value="إيجار" ${e.category==='إيجار'?'selected':''}>إيجار</option><option value="بنزين" ${e.category==='بنزين'?'selected':''}>بنزين</option><option value="رواتب" ${e.category==='رواتب'?'selected':''}>رواتب</option><option value="مشتريات" ${e.category==='مشتريات'?'selected':''}>مشتريات</option><option value="أخرى" ${e.category==='أخرى'?'selected':''}>أخرى</option></select><input type="text" id="exp-custom-cat" placeholder="اكتب الفئة هنا..." value="${e.customCategory}" style="display:${e.category==='أخرى'?'block':'none'}; margin-top:-5px;"></div><div><label>المبلغ</label><input type="number" id="exp-amount" class="en-numbers" value="${e.amount}" required><label>طريقة الدفع</label><select id="exp-method"><option value="كاش" ${e.method==='كاش'?'selected':''}>كاش</option><option value="تحويل" ${e.method==='تحويل'?'selected':''}>تحويل</option><option value="بطاقة" ${e.method==='بطاقة'?'selected':''}>بطاقة</option></select><label>صورة الفاتورة</label><input type="file" accept="image/*" onchange="encodeExpImg(this)" style="padding:5px;"><img id="exp-img-preview" src="${e.image||''}" style="width:80px; height:80px; object-fit:cover; margin-top:5px; border-radius:6px; display:${e.image?'block':'none'}; cursor:pointer;" onclick="if(this.src) window.open(this.src, '_blank');"><input type="hidden" id="exp-img-b64" value="${e.image||''}"></div></div><label style="margin-top:10px; display:block;">ملاحظة</label><textarea id="exp-notes" rows="2">${e.notes}</textarea><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="saveExpense(${id || 'null'})">حفظ</button></div>`);
+                <div class="grid grid-2"><div><label>التاريخ</label><input type="date" id="exp-date" value="${e.date}" class="en-numbers" dir="ltr" style="text-align:right;" required><label>النوع</label><select id="exp-type"><option value="ثابت" ${e.type==='ثابت'?'selected':''}>ثابت</option><option value="متغير" ${e.type==='متغير'?'selected':''}>متغير</option><option value="أصل" ${e.type==='أصل'?'selected':''}>أصل</option></select><label>الفئة</label><select id="exp-cat" onchange="toggleExpCustomCat(this.value)"><option value="إيجار" ${e.category==='إيجار'?'selected':''}>إيجار</option><option value="بنزين" ${e.category==='بنزين'?'selected':''}>بنزين</option><option value="رواتب" ${e.category==='رواتب'?'selected':''}>رواتب</option><option value="مشتريات" ${e.category==='مشتريات'?'selected':''}>مشتريات</option><option value="أخرى" ${e.category==='أخرى'?'selected':''}>أخرى</option></select><input type="text" id="exp-custom-cat" placeholder="اكتب الفئة هنا..." value="${e.customCategory}" style="display:${e.category==='أخرى'?'block':'none'}; margin-top:-5px;"></div><div><label>المبلغ</label><input type="number" id="exp-amount" class="en-numbers" value="${e.amount}" required><label>طريقة الدفع</label><select id="exp-method"><option value="كاش" ${e.method==='كاش'?'selected':''}>كاش</option><option value="تحويل" ${e.method==='تحويل'?'selected':''}>تحويل</option><option value="بطاقة" ${e.method==='بطاقة'?'selected':''}>بطاقة</option></select><label>صورة الفاتورة</label><input type="file" accept="image/*" onchange="encodeExpImg(this)" style="padding:5px;"><img id="exp-img-preview" src="${e.image||''}" style="width:80px; height:80px; object-fit:cover; margin-top:5px; border-radius:6px; display:${e.image?'block':'none'}; cursor:pointer;" onclick="if(this.src) window.open(this.src, '_blank');"><input type="hidden" id="exp-img-b64" value="${e.image||''}"></div></div><label style="margin-top:10px; display:block;">ملاحظة</label><textarea id="exp-notes" rows="2">${e.notes}</textarea><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="saveExpense(${id || 'null'})">حفظ</button></div>`);
         }
 
         function toggleExpCustomCat(val) { document.getElementById('exp-custom-cat').style.display = (val === 'أخرى') ? 'block' : 'none'; }
@@ -969,7 +1087,7 @@
                 <h3 style="color:var(--primary); margin:0;">إنشاء تقرير المصروفات</h3>
                 <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
             </div>
-            <label>المدة الزمنية:</label><select id="report-time-filter" onchange="toggleReportCustomDate()"><option value="today">اليوم</option><option value="week">هذا الأسبوع</option><option value="month">هذا الشهر</option><option value="custom">مخصص</option></select><div id="report-custom-date" class="hidden grid grid-2" style="margin-top:10px;"><div><label>من:</label><input type="date" id="report-start" class="en-numbers" lang="en-GB" dir="ltr"></div><div><label>إلى:</label><input type="date" id="report-end" class="en-numbers" lang="en-GB" dir="ltr"></div></div><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="generateExpenseReport()">إنشاء وطباعة</button></div>`); 
+            <label>المدة الزمنية:</label><select id="report-time-filter" onchange="toggleReportCustomDate()"><option value="today">اليوم</option><option value="week">هذا الأسبوع</option><option value="month">هذا الشهر</option><option value="custom">مخصص</option></select><div id="report-custom-date" class="hidden grid grid-2" style="margin-top:10px;"><div><label>من:</label><input type="text" id="report-start" class="en-numbers-center" placeholder="تاريخ البداية" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')"></div><div><label>إلى:</label><input type="text" id="report-end" class="en-numbers-center" placeholder="تاريخ النهاية" onfocus="(this.type='date')" onblur="(this.value === '' ? this.type='text' : this.type='date')"></div></div><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="generateExpenseReport()">إنشاء وطباعة</button></div>`); 
         }
         function toggleReportCustomDate() { document.getElementById('report-custom-date').classList.toggle('hidden', document.getElementById('report-time-filter').value !== 'custom'); }
 
@@ -1093,16 +1211,15 @@
 
                 tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
                     <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
-                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${displayIssueDate}</span></td>
+                    <td style="text-align:center"><span class="en-numbers-center" style="font-size:0.85rem; color:var(--text-muted);">${displayIssueDate}</span></td>
                     <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem; font-weight:bold; color:var(--primary); background: rgba(139, 58, 42, 0.05); padding: 4px 8px; border-radius: 4px;">${sTime}</span></td>
                     <td style="text-align:right">${inv.customerName}</td>
                     <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
                     <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
                     <td style="text-align:center"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
-                    <td style="text-align:center"><button class="icon-btn-solid warning" style="display:inline-flex;" onclick="event.stopPropagation(); editFullInvoice(${inv.id})" title="تعديل الفاتورة"><i class="fas fa-edit"></i></button></td>
                 </tr>`;
             });
-            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد فواتير حالية أو قادمة</td></tr>';
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد فواتير حالية أو قادمة</td></tr>';
         }
         
         function viewInvoiceDetails(id) {
@@ -1151,8 +1268,11 @@
                 </div>
                 <div class="flex" style="justify-content:space-between; margin-top:25px; flex-wrap:wrap; gap:10px;">
                     <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="btn btn-outline" onclick="printInvoice(${inv.id})"><i class="fas fa-print"></i> طباعة</button><button class="btn btn-success" onclick="sendInvoiceWA(${inv.id})"><i class="fab fa-whatsapp"></i> إرسال (PDF)</button></div>
-                    <!-- 🌟 زر تعديل الفاتورة الشامل متاح للجميع 🌟 -->
-                    <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="icon-btn-solid warning" onclick="editFullInvoice(${inv.id})" title="تعديل الفاتورة بالكامل"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteInvoice(${inv.id})" title="حذف نهائي"><i class="fas fa-trash"></i></button>` : ''}</div>
+                    <!-- 🌟 أزرار تعديل وحذف الفاتورة متاحة للجميع بدون استثناء 🌟 -->
+                    <div class="flex" style="gap:10px; flex-wrap:wrap;">
+                        <button class="icon-btn-solid warning" onclick="editFullInvoice(${inv.id})" title="تعديل الفاتورة بالكامل"><i class="fas fa-edit"></i></button>
+                        <button class="icon-btn-solid danger" onclick="deleteInvoice(${inv.id})" title="حذف نهائي"><i class="fas fa-trash"></i></button>
+                    </div>
                 </div>
             `, 'modal-lg');
         }
