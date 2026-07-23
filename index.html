@@ -244,9 +244,11 @@
                         <input type="text" id="past-inv-search" placeholder="بحث برقم الفاتورة أو العميل..." class="en-numbers" style="width: 250px; margin:0; max-width:100%;" onkeyup="renderDashboard()">
                         
                         <div class="flex" style="gap:5px; align-items:center; flex-wrap:wrap;">
-                            <label style="margin:0; font-size:0.9rem; font-weight:bold;">تاريخ الفاتورة:</label>
-                            <input type="date" id="past-inv-date" class="en-numbers" style="margin:0; padding:5px; width:140px;" onchange="renderDashboard()">
-                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.85rem;" onclick="document.getElementById('past-inv-date').value=''; renderDashboard();">الكل</button>
+                            <label style="margin:0; font-size:0.9rem; font-weight:bold;">من:</label>
+                            <input type="date" id="past-inv-date-start" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; width:130px;" onchange="renderDashboard()">
+                            <label style="margin:0; font-size:0.9rem; font-weight:bold;">إلى:</label>
+                            <input type="date" id="past-inv-date-end" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; width:130px;" onchange="renderDashboard()">
+                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.85rem;" onclick="document.getElementById('past-inv-date-start').value=''; document.getElementById('past-inv-date-end').value=''; renderDashboard();">الكل</button>
                         </div>
                     </div>
                     <div class="card" style="padding: 10px;">
@@ -362,11 +364,11 @@
                         <div id="exp-custom-date-container" class="hidden flex" style="gap:10px; justify-content:flex-end; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:15px;">
                             <div class="flex" style="align-items:center; gap:5px;">
                                 <label style="margin:0; font-size:0.9rem;">من:</label>
-                                <input type="date" id="exp-date-start" class="en-numbers" style="margin:0; padding:5px; height:auto;" onchange="renderExpensesDashboard()">
+                                <input type="date" id="exp-date-start" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; height:auto;" onchange="renderExpensesDashboard()">
                             </div>
                             <div class="flex" style="align-items:center; gap:5px;">
                                 <label style="margin:0; font-size:0.9rem;">إلى:</label>
-                                <input type="date" id="exp-date-end" class="en-numbers" style="margin:0; padding:5px; height:auto;" onchange="renderExpensesDashboard()">
+                                <input type="date" id="exp-date-end" class="en-numbers" lang="en-GB" dir="ltr" style="margin:0; padding:5px; height:auto;" onchange="renderExpensesDashboard()">
                             </div>
                         </div>
 
@@ -818,27 +820,34 @@
         function renderDashboard() {
             const tbody = document.querySelector('#past-invoices-table tbody'); tbody.innerHTML = ''; 
             const search = (document.getElementById('past-inv-search').value || '').toLowerCase();
-            const dateFilter = document.getElementById('past-inv-date').value;
+            const dateStart = document.getElementById('past-inv-date-start').value;
+            const dateEnd = document.getElementById('past-inv-date-end').value;
             
             db.invoices.filter(i => {
                 if(!isPastInvoice(i)) return false;
                 if(search && !(i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search)))) return false;
                 
-                if(dateFilter) {
+                if(dateStart || dateEnd) {
                     const d = new Date(i.date);
                     if(!isNaN(d.getTime())) {
                         const yyyyMmDd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-                        if(yyyyMmDd !== dateFilter) return false;
+                        if(dateStart && yyyyMmDd < dateStart) return false;
+                        if(dateEnd && yyyyMmDd > dateEnd) return false;
                     }
                 }
                 return true;
             }).forEach(inv => {
                 let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
                 let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
+                
+                // 🌟 عرض التاريخ مع اختصار الشهر
+                let dateParts = inv.date.split(' ');
+                let shortMonth = dateParts.length > 1 ? dateParts[1].substring(0, 3) : '';
+                let displayIssueDate = dateParts[0] + (shortMonth ? ' ' + shortMonth : '');
 
                 tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
                     <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
-                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${inv.date.split(' ')[0]}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${displayIssueDate}</span></td>
                     <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem; font-weight:bold; color:var(--primary); background: rgba(139, 58, 42, 0.05); padding: 4px 8px; border-radius: 4px;">${sTime}</span></td>
                     <td style="text-align:right">${inv.customerName}</td>
                     <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
@@ -919,7 +928,7 @@
                     <h3 style="color:var(--primary); margin:0;">${id ? 'تعديل المصروف' : 'إضافة مصروف جديد'}</h3>
                     <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="grid grid-2"><div><label>التاريخ</label><input type="date" id="exp-date" value="${e.date}" class="en-numbers" style="text-align:right;" required><label>النوع</label><select id="exp-type"><option value="ثابت" ${e.type==='ثابت'?'selected':''}>ثابت</option><option value="متغير" ${e.type==='متغير'?'selected':''}>متغير</option><option value="أصل" ${e.type==='أصل'?'selected':''}>أصل</option></select><label>الفئة</label><select id="exp-cat" onchange="toggleExpCustomCat(this.value)"><option value="إيجار" ${e.category==='إيجار'?'selected':''}>إيجار</option><option value="بنزين" ${e.category==='بنزين'?'selected':''}>بنزين</option><option value="رواتب" ${e.category==='رواتب'?'selected':''}>رواتب</option><option value="مشتريات" ${e.category==='مشتريات'?'selected':''}>مشتريات</option><option value="أخرى" ${e.category==='أخرى'?'selected':''}>أخرى</option></select><input type="text" id="exp-custom-cat" placeholder="اكتب الفئة هنا..." value="${e.customCategory}" style="display:${e.category==='أخرى'?'block':'none'}; margin-top:-5px;"></div><div><label>المبلغ</label><input type="number" id="exp-amount" class="en-numbers" value="${e.amount}" required><label>طريقة الدفع</label><select id="exp-method"><option value="كاش" ${e.method==='كاش'?'selected':''}>كاش</option><option value="تحويل" ${e.method==='تحويل'?'selected':''}>تحويل</option><option value="بطاقة" ${e.method==='بطاقة'?'selected':''}>بطاقة</option></select><label>صورة الفاتورة</label><input type="file" accept="image/*" onchange="encodeExpImg(this)" style="padding:5px;"><img id="exp-img-preview" src="${e.image||''}" style="width:80px; height:80px; object-fit:cover; margin-top:5px; border-radius:6px; display:${e.image?'block':'none'}; cursor:pointer;" onclick="if(this.src) window.open(this.src, '_blank');"><input type="hidden" id="exp-img-b64" value="${e.image||''}"></div></div><label style="margin-top:10px; display:block;">ملاحظة</label><textarea id="exp-notes" rows="2">${e.notes}</textarea><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="saveExpense(${id || 'null'})">حفظ</button></div>`);
+                <div class="grid grid-2"><div><label>التاريخ</label><input type="date" id="exp-date" value="${e.date}" class="en-numbers" lang="en-GB" dir="ltr" style="text-align:right;" required><label>النوع</label><select id="exp-type"><option value="ثابت" ${e.type==='ثابت'?'selected':''}>ثابت</option><option value="متغير" ${e.type==='متغير'?'selected':''}>متغير</option><option value="أصل" ${e.type==='أصل'?'selected':''}>أصل</option></select><label>الفئة</label><select id="exp-cat" onchange="toggleExpCustomCat(this.value)"><option value="إيجار" ${e.category==='إيجار'?'selected':''}>إيجار</option><option value="بنزين" ${e.category==='بنزين'?'selected':''}>بنزين</option><option value="رواتب" ${e.category==='رواتب'?'selected':''}>رواتب</option><option value="مشتريات" ${e.category==='مشتريات'?'selected':''}>مشتريات</option><option value="أخرى" ${e.category==='أخرى'?'selected':''}>أخرى</option></select><input type="text" id="exp-custom-cat" placeholder="اكتب الفئة هنا..." value="${e.customCategory}" style="display:${e.category==='أخرى'?'block':'none'}; margin-top:-5px;"></div><div><label>المبلغ</label><input type="number" id="exp-amount" class="en-numbers" value="${e.amount}" required><label>طريقة الدفع</label><select id="exp-method"><option value="كاش" ${e.method==='كاش'?'selected':''}>كاش</option><option value="تحويل" ${e.method==='تحويل'?'selected':''}>تحويل</option><option value="بطاقة" ${e.method==='بطاقة'?'selected':''}>بطاقة</option></select><label>صورة الفاتورة</label><input type="file" accept="image/*" onchange="encodeExpImg(this)" style="padding:5px;"><img id="exp-img-preview" src="${e.image||''}" style="width:80px; height:80px; object-fit:cover; margin-top:5px; border-radius:6px; display:${e.image?'block':'none'}; cursor:pointer;" onclick="if(this.src) window.open(this.src, '_blank');"><input type="hidden" id="exp-img-b64" value="${e.image||''}"></div></div><label style="margin-top:10px; display:block;">ملاحظة</label><textarea id="exp-notes" rows="2">${e.notes}</textarea><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="saveExpense(${id || 'null'})">حفظ</button></div>`);
         }
 
         function toggleExpCustomCat(val) { document.getElementById('exp-custom-cat').style.display = (val === 'أخرى') ? 'block' : 'none'; }
@@ -957,7 +966,7 @@
                 <h3 style="color:var(--primary); margin:0;">إنشاء تقرير المصروفات</h3>
                 <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
             </div>
-            <label>المدة الزمنية:</label><select id="report-time-filter" onchange="toggleReportCustomDate()"><option value="today">اليوم</option><option value="week">هذا الأسبوع</option><option value="month">هذا الشهر</option><option value="custom">مخصص</option></select><div id="report-custom-date" class="hidden grid grid-2" style="margin-top:10px;"><div><label>من:</label><input type="date" id="report-start" class="en-numbers"></div><div><label>إلى:</label><input type="date" id="report-end" class="en-numbers"></div></div><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="generateExpenseReport()">إنشاء وطباعة</button></div>`); 
+            <label>المدة الزمنية:</label><select id="report-time-filter" onchange="toggleReportCustomDate()"><option value="today">اليوم</option><option value="week">هذا الأسبوع</option><option value="month">هذا الشهر</option><option value="custom">مخصص</option></select><div id="report-custom-date" class="hidden grid grid-2" style="margin-top:10px;"><div><label>من:</label><input type="date" id="report-start" class="en-numbers" lang="en-GB" dir="ltr"></div><div><label>إلى:</label><input type="date" id="report-end" class="en-numbers" lang="en-GB" dir="ltr"></div></div><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="generateExpenseReport()">إنشاء وطباعة</button></div>`); 
         }
         function toggleReportCustomDate() { document.getElementById('report-custom-date').classList.toggle('hidden', document.getElementById('report-time-filter').value !== 'custom'); }
 
@@ -1072,12 +1081,16 @@
             
             db.invoices.filter(i => !isPastInvoice(i) && (i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search)))).forEach(inv => {
                 let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
-                
                 let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
+                
+                // 🌟 عرض التاريخ مع اختصار الشهر
+                let dateParts = inv.date.split(' ');
+                let shortMonth = dateParts.length > 1 ? dateParts[1].substring(0, 3) : '';
+                let displayIssueDate = dateParts[0] + (shortMonth ? ' ' + shortMonth : '');
 
                 tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
                     <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
-                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${inv.date.split(' ')[0]}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${displayIssueDate}</span></td>
                     <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem; font-weight:bold; color:var(--primary); background: rgba(139, 58, 42, 0.05); padding: 4px 8px; border-radius: 4px;">${sTime}</span></td>
                     <td style="text-align:right">${inv.customerName}</td>
                     <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
@@ -1276,7 +1289,7 @@
                         
                         <div style="background: rgba(139, 58, 42, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border);">
                             <label style="font-size:0.85rem; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">تاريخ ووقت الخدمة:</label>
-                            <input type="datetime-local" id="pos-service-time" class="en-numbers" lang="en-US" dir="ltr" value="${currentDateTime}" onchange="renderPOSProductsModal()" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%; text-align: left;">
+                            <input type="datetime-local" id="pos-service-time" class="en-numbers" lang="en-GB" dir="ltr" value="${currentDateTime}" onchange="renderPOSProductsModal()" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%; text-align: left;">
                         </div>
 
                         <div class="flex" style="justify-content:space-between;"><span>المجموع:</span> <span id="pos-sub" class="en-numbers">0</span></div>
