@@ -39,7 +39,7 @@
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); margin-bottom: 10px; }
         
         .en-numbers { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
-        .en-numbers-center { direction: ltr !important; text-align: center !important; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; }
+        .en-numbers-center { direction: ltr !important; text-align: center !important; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: block; width: 100%; }
         input[type="number"], input[type="date"], input[type="datetime-local"], input[type="email"], input[type="password"] { direction: ltr !important; text-align: left; font-family: 'Arial', sans-serif !important; unicode-bidi: isolate; display: block; width: 100%; }
         select option { font-family: 'Arial', 'Tajawal', sans-serif; }
 
@@ -129,7 +129,7 @@
         .pos-item-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; overflow: hidden; transition: transform 0.2s; display: flex; flex-direction: column; height: 210px; }
         .pos-item-card:active { transform: scale(0.95); border-color: var(--primary); }
         .pos-item-img { width: 100%; height: 100px; object-fit: cover; background: #eee; flex-shrink: 0; border-bottom: 1px solid var(--border); }
-        .pos-item-info { padding: 10px 5px; font-size: 0.95rem; flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }
+        .pos-item-info { padding: 10px 5px; font-size: 0.95rem; flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; text-align: center; }
         .pos-cart { background: rgba(0,0,0,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
         .cart-items { flex: 1; overflow-y: auto; border-bottom: 1px solid var(--border); margin-bottom: 10px; padding-bottom: 10px; }
         .cart-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.95rem; background: var(--card); padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
@@ -242,6 +242,12 @@
                 <div id="sec-dashboard" class="section hidden">
                     <div class="flex" style="justify-content: space-between; margin-bottom: 20px; align-items:center; flex-wrap:wrap; gap:10px;">
                         <input type="text" id="past-inv-search" placeholder="بحث برقم الفاتورة أو العميل..." class="en-numbers" style="width: 250px; margin:0; max-width:100%;" onkeyup="renderDashboard()">
+                        
+                        <div class="flex" style="gap:5px; align-items:center; flex-wrap:wrap;">
+                            <label style="margin:0; font-size:0.9rem; font-weight:bold;">تاريخ الفاتورة:</label>
+                            <input type="date" id="past-inv-date" class="en-numbers" style="margin:0; padding:5px; width:140px;" onchange="renderDashboard()">
+                            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.85rem;" onclick="document.getElementById('past-inv-date').value=''; renderDashboard();">الكل</button>
+                        </div>
                     </div>
                     <div class="card" style="padding: 10px;">
                         <div class="table-responsive">
@@ -632,7 +638,7 @@
                 
                 if(custsRes.data) db.customers = custsRes.data.map(c => ({ id: c.id, name: c.name, phone: c.phone, address1: c.address1, address2: c.address2, notes: c.notes, walletBalance: c.wallet_balance || 0, createdBy: c.created_by || 'غير محدد' }));
                 
-                if(invsRes.data) db.invoices = invsRes.data.map(i => ({ id: i.id, invNumber: i.inv_number, date: i.date, serviceTime: i.service_time, customerId: i.customer_id, customerName: i.customer_name, items: i.items, subtotal: i.subtotal, discountVal: i.discount_val, total: i.total, status: i.status, paidAmount: i.paid_amount, createdBy: i.created_by || 'غير محدد' }));
+                if(invsRes.data) db.invoices = invsRes.data.map(i => ({ id: i.id, invNumber: i.inv_number, date: i.date, serviceTime: i.service_time, customerId: i.customer_id, customerName: i.customer_name, items: i.items, subtotal: i.subtotal, discountVal: i.discount_val, total: i.total, status: i.status, paidAmount: i.paid_amount, payMethod: i.pay_method || 'كاش', createdBy: i.created_by || 'غير محدد' }));
                 if(expRes.data) db.expenses = expRes.data.map(e => ({ id: e.id, date: e.date, type: e.type, category: e.category, customCategory: e.custom_category, amount: e.amount, method: e.method, notes: e.notes, image: e.image, createdBy: e.created_by || 'غير محدد' }));
                 
                 applyTheme(db.settings.theme);
@@ -808,12 +814,25 @@
             if(id==='stock') renderStock();
         }
 
-        // ================= Dashboard (Past Invoices) =================
+        // ================= Dashboard (Past Invoices / سجل الفواتير) =================
         function renderDashboard() {
             const tbody = document.querySelector('#past-invoices-table tbody'); tbody.innerHTML = ''; 
             const search = (document.getElementById('past-inv-search').value || '').toLowerCase();
+            const dateFilter = document.getElementById('past-inv-date').value;
             
-            db.invoices.filter(i => isPastInvoice(i) && (i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search)))).forEach(inv => {
+            db.invoices.filter(i => {
+                if(!isPastInvoice(i)) return false;
+                if(search && !(i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search)))) return false;
+                
+                if(dateFilter) {
+                    const d = new Date(i.date);
+                    if(!isNaN(d.getTime())) {
+                        const yyyyMmDd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                        if(yyyyMmDd !== dateFilter) return false;
+                    }
+                }
+                return true;
+            }).forEach(inv => {
                 let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
                 let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
 
@@ -1086,7 +1105,7 @@
                 </div>
                 
                 <!-- 🌟 تعديل المحاذاة الشامل هنا 🌟 -->
-                <div class="grid grid-3" style="font-size:0.95rem; margin-bottom:20px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; text-align:center;">
+                <div class="grid grid-4" style="font-size:0.95rem; margin-bottom:20px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; text-align:center;">
                     <div>
                         <strong style="color:var(--text-muted); font-size:0.85rem; display:block; margin-bottom:5px;">العميل:</strong>
                         <span style="font-weight:bold;">${inv.customerName}</span>
@@ -1098,6 +1117,10 @@
                     <div>
                         <strong style="color:var(--primary); font-size:0.85rem; display:block; margin-bottom:5px;">وقت الخدمة:</strong>
                         <span class="en-numbers" style="font-weight:bold; display:inline-block;">${sTime}</span>
+                    </div>
+                    <div>
+                        <strong style="color:var(--text-muted); font-size:0.85rem; display:block; margin-bottom:5px;">طريقة الدفع:</strong>
+                        <span style="font-weight:bold;">${inv.payMethod || 'كاش'}</span>
                     </div>
                 </div>
 
@@ -1111,7 +1134,7 @@
                 </div>
                 <div class="flex" style="justify-content:space-between; margin-top:25px; flex-wrap:wrap; gap:10px;">
                     <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="btn btn-outline" onclick="printInvoice(${inv.id})"><i class="fas fa-print"></i> طباعة</button><button class="btn btn-success" onclick="sendInvoiceWA(${inv.id})"><i class="fab fa-whatsapp"></i> إرسال (PDF)</button></div>
-                    <!-- 🌟 زر تعديل الفاتورة الشامل 🌟 -->
+                    <!-- 🌟 زر تعديل الفاتورة الشامل متاح للجميع 🌟 -->
                     <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="icon-btn-solid warning" onclick="editFullInvoice(${inv.id})" title="تعديل الفاتورة بالكامل"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteInvoice(${inv.id})" title="حذف نهائي"><i class="fas fa-trash"></i></button>` : ''}</div>
                 </div>
             `, 'modal-lg');
@@ -1148,7 +1171,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        phone: phone, customerName: inv.customerName, invNumber: inv.invNumber, storeName: db.settings.storeName, vatNumber: db.settings.vatNumber || '', storePhone: db.settings.phone || '', storeLogo: db.settings.logo || '', date: inv.date, status: inv.status, items: inv.items, subtotal: inv.subtotal, discountVal: inv.discountVal, total: inv.total, paidAmount: inv.paidAmount !== undefined ? inv.paidAmount : inv.total, cashier: inv.createdBy
+                        phone: phone, customerName: inv.customerName, invNumber: inv.invNumber, storeName: db.settings.storeName, vatNumber: db.settings.vatNumber || '', storePhone: db.settings.phone || '', storeLogo: db.settings.logo || '', date: inv.date, status: inv.status, items: inv.items, subtotal: inv.subtotal, discountVal: inv.discountVal, total: inv.total, paidAmount: inv.paidAmount !== undefined ? inv.paidAmount : inv.total, cashier: inv.createdBy, payMethod: inv.payMethod || 'كاش'
                     })
                 });
                 hideLoading();
@@ -1189,7 +1212,7 @@
                 // تعبئة السلة
                 posCart = JSON.parse(JSON.stringify(inv.items));
                 
-                // تعبئة حالة الدفع
+                // تعبئة حالة الدفع وطريقة الدفع
                 const payStatusDropdown = document.getElementById('pos-pay-status');
                 if(payStatusDropdown) {
                     payStatusDropdown.value = inv.status;
@@ -1197,6 +1220,11 @@
                     if(inv.status === 'مدفوع جزئيا') {
                         document.getElementById('pos-paid-amount').value = inv.paidAmount;
                     }
+                }
+                
+                const payMethodDropdown = document.getElementById('pos-pay-method');
+                if(payMethodDropdown) {
+                    payMethodDropdown.value = inv.payMethod || 'كاش';
                 }
                 
                 // تغيير زر الإصدار إلى تحديث
@@ -1257,7 +1285,16 @@
                             <input type="number" id="pos-disc" class="en-numbers" style="width:60px; padding:5px; margin:0; text-align:center;" value="0" min="0" max="100" onkeyup="updateCartTotals()" onchange="updateCartTotals()">
                         </div>
 
-                        <!-- 🌟 قسم إضافة الدفع قبل الإصدار 🌟 -->
+                        <!-- 🌟 قسم إضافة طريقة وحالة الدفع 🌟 -->
+                        <div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;">
+                            <span>طريقة الدفع:</span>
+                            <select id="pos-pay-method" class="en-numbers" style="width:auto; margin:0; padding:5px; text-align:right;">
+                                <option value="كاش">كاش</option>
+                                <option value="شبكة">شبكة</option>
+                                <option value="تحويل">تحويل</option>
+                            </select>
+                        </div>
+                        
                         <div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;">
                             <span>حالة الدفع:</span>
                             <select id="pos-pay-status" onchange="togglePOSPaidInput(this.value)" class="en-numbers" style="width:auto; margin:0; padding:5px; text-align:right;">
@@ -1266,6 +1303,7 @@
                                 <option value="غير مدفوع">غير مدفوع</option>
                             </select>
                         </div>
+                        
                         <div class="flex hidden" id="pos-paid-amount-div" style="justify-content:space-between; margin:8px 0; align-items:center;">
                             <span style="color:var(--warning);">المبلغ المدفوع:</span>
                             <input type="number" id="pos-paid-amount" class="en-numbers" style="width:80px; padding:5px; margin:0; text-align:center; border-color:var(--warning);">
@@ -1373,10 +1411,10 @@
                 grid.innerHTML += `
                 <div class="pos-item-card" style="${cardStyle}" onclick="${clickAction}">
                     <img src="${img}" class="pos-item-img">
-                    <div class="pos-item-info">
+                    <div class="pos-item-info" style="align-items:center; text-align:center;">
                         <strong>${p.nameAr}</strong>
-                        <span style="color:var(--primary)" class="en-numbers">${p.price} SAR</span>
-                        <span style="font-size:0.85rem; color:${stockColor}; font-weight:bold;" class="en-numbers">متاح: ${netAvailable}</span>
+                        <div style="color:var(--primary); width:100%; text-align:center;" class="en-numbers-center">${p.price} SAR</div>
+                        <div style="font-size:0.85rem; color:${stockColor}; font-weight:bold; width:100%; text-align:center;" class="en-numbers-center">متاح: ${netAvailable}</div>
                     </div>
                 </div>`; 
             }); 
@@ -1426,6 +1464,7 @@
             
             const serviceTime = document.getElementById('pos-service-time').value;
             const payStatus = document.getElementById('pos-pay-status').value;
+            const payMethod = document.getElementById('pos-pay-method').value; // 🌟 جلب طريقة الدفع
             
             // 🌟 حساب المبلغ المدفوع بناءً على الحالة المختارة 🌟
             let finalPaidAmount = 0;
@@ -1452,13 +1491,14 @@
                     discount_val: totalDiscountForInvoice, 
                     total: t.total, 
                     status: payStatus, 
-                    paid_amount: finalPaidAmount
+                    paid_amount: finalPaidAmount,
+                    pay_method: payMethod
                 };
                 
                 const { error } = await supabaseClient.from('thawq_invoices').update(dataObj).eq('id', editingInvoiceId);
                 if (!error) {
                     Object.assign(existingInv, {
-                        serviceTime: dataObj.service_time, customerId: dataObj.customer_id, customerName: dataObj.customer_name, items: dataObj.items, subtotal: dataObj.subtotal, discountVal: dataObj.discount_val, total: dataObj.total, status: dataObj.status, paidAmount: dataObj.paid_amount
+                        serviceTime: dataObj.service_time, customerId: dataObj.customer_id, customerName: dataObj.customer_name, items: dataObj.items, subtotal: dataObj.subtotal, discountVal: dataObj.discount_val, total: dataObj.total, status: dataObj.status, paidAmount: dataObj.paid_amount, payMethod: dataObj.pay_method
                     });
                     
                     logAction('تعديل', 'فاتورة', `تعديل شامل للفاتورة رقم ${existingInv.invNumber}`);
@@ -1471,14 +1511,14 @@
                 // ================= وضع إنشاء فاتورة جديدة =================
                 const meta = generateInvoiceMeta(); 
                 const dataObj = { 
-                    inv_number: meta.invNum, date: meta.dateStr, service_time: serviceTime, customer_id: parseInt(custSel.value), customer_name: cleanCustName, items: posCart, subtotal: t.sub, discount_val: totalDiscountForInvoice, total: t.total, status: payStatus, paid_amount: finalPaidAmount, created_by: userName 
+                    inv_number: meta.invNum, date: meta.dateStr, service_time: serviceTime, customer_id: parseInt(custSel.value), customer_name: cleanCustName, items: posCart, subtotal: t.sub, discount_val: totalDiscountForInvoice, total: t.total, status: payStatus, paid_amount: finalPaidAmount, pay_method: payMethod, created_by: userName 
                 };
                 
                 const { data } = await supabaseClient.from('thawq_invoices').insert([dataObj]).select();
                 
                 if(data && data[0]) { 
                     db.invoices.unshift({ 
-                        id: data[0].id, invNumber: data[0].inv_number, date: data[0].date, serviceTime: data[0].service_time, customerId: data[0].customer_id, customerName: data[0].customer_name, items: data[0].items, subtotal: data[0].subtotal, discountVal: data[0].discount_val, total: data[0].total, status: data[0].status, paidAmount: data[0].paid_amount, createdBy: userName 
+                        id: data[0].id, invNumber: data[0].inv_number, date: data[0].date, serviceTime: data[0].service_time, customerId: data[0].customer_id, customerName: data[0].customer_name, items: data[0].items, subtotal: data[0].subtotal, discountVal: data[0].discount_val, total: data[0].total, status: data[0].status, paidAmount: data[0].paid_amount, payMethod: data[0].pay_method, createdBy: userName 
                     }); 
 
                     if(t.walletDeduction > 0) {
