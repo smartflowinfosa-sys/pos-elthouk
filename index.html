@@ -124,12 +124,12 @@
         .powered-by { display: inline-block; background: rgba(139, 58, 42, 0.08); color: var(--primary); padding: 8px 25px; border-radius: 50px; margin-top: 25px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(139, 58, 42, 0.2); letter-spacing: 0.5px; }
 
         /* ================= POS Cart ================= */
-        .pos-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: 65vh; min-height: 500px; }
-        .pos-products { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; align-content: start; min-height: 400px; padding-bottom: 20px; }
-        .pos-item-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; overflow: hidden; transition: transform 0.2s; display: flex; flex-direction: column; min-height: 160px; flex-shrink: 0; }
+        .pos-container { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: 65vh; }
+        .pos-products { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; align-content: start; padding-right: 5px; }
+        .pos-item-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; overflow: hidden; transition: transform 0.2s; display: flex; flex-direction: column; height: 210px; }
         .pos-item-card:active { transform: scale(0.95); border-color: var(--primary); }
-        .pos-item-img { width: 100%; height: 90px; object-fit: cover; background: #eee; flex-shrink: 0; }
-        .pos-item-info { padding: 10px; font-size: 0.95rem; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .pos-item-img { width: 100%; height: 100px; object-fit: cover; background: #eee; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+        .pos-item-info { padding: 10px 5px; font-size: 0.95rem; flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }
         .pos-cart { background: rgba(0,0,0,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; }
         .cart-items { flex: 1; overflow-y: auto; border-bottom: 1px solid var(--border); margin-bottom: 10px; padding-bottom: 10px; }
         .cart-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.95rem; background: var(--card); padding: 8px; border-radius: 6px; border: 1px solid var(--border); }
@@ -229,7 +229,7 @@
             <div id="header">
                 <div class="flex" style="align-items:center;">
                     <button class="mobile-menu-btn" onclick="toggleSidebar(true)"><i class="fas fa-bars"></i></button>
-                    <h2 id="page-title">المبيعات</h2>
+                    <h2 id="page-title">سجل الفواتير</h2>
                 </div>
                 <div class="header-actions">
                     <span id="logged-user-name" style="font-weight:bold; color:var(--primary); font-size:0.9rem; display:none;"></span>
@@ -240,15 +240,26 @@
             <div id="content-area">
                 
                 <div id="sec-dashboard" class="section hidden">
-                    <div class="grid grid-4 mb-4" style="margin-bottom:20px;">
-                        <div class="card stat-card" style="text-align:center"><i class="fas fa-money-bill-wave" style="font-size:2rem; color:var(--primary)"></i><div>إجمالي المبيعات</div><h3 id="dash-total-sales" class="en-numbers-center">0 SAR</h3></div>
-                        <div class="card stat-card" style="text-align:center"><i class="fas fa-file-invoice" style="font-size:2rem; color:var(--primary)"></i><div>عدد الفواتير</div><h3 id="dash-inv-count" class="en-numbers-center">0</h3></div>
-                        <div class="card stat-card" style="text-align:center"><i class="fas fa-calculator" style="font-size:2rem; color:var(--primary)"></i><div>متوسط الفاتورة</div><h3 id="dash-avg" class="en-numbers-center">0 SAR</h3></div>
-                        <div class="card stat-card" style="text-align:center"><i class="fas fa-tags" style="font-size:2rem; color:var(--primary)"></i><div>إجمالي الخصومات</div><h3 id="dash-discount" class="en-numbers-center">0 SAR</h3></div>
+                    <div class="flex" style="justify-content: space-between; margin-bottom: 20px; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <input type="text" id="past-inv-search" placeholder="بحث برقم الفاتورة أو العميل..." class="en-numbers" style="width: 250px; margin:0; max-width:100%;" onkeyup="renderDashboard()">
                     </div>
-                    <div class="grid grid-2">
-                        <div class="card"><h3 class="card-header">المبيعات</h3><canvas id="salesChart"></canvas></div>
-                        <div class="card"><h3 class="card-header">المنتجات الأكثر مبيعاً</h3><canvas id="typeChart"></canvas></div>
+                    <div class="card" style="padding: 10px;">
+                        <div class="table-responsive">
+                            <table id="past-invoices-table" style="margin-top:0; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align:right">رقم الفاتورة</th>
+                                        <th style="text-align:right">تاريخ الإصدار</th>
+                                        <th style="text-align:right">وقت الخدمة</th>
+                                        <th style="text-align:right">العميل</th>
+                                        <th style="text-align:center">المجموع</th>
+                                        <th style="text-align:center">الحالة</th>
+                                        <th style="text-align:center">بواسطة</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -577,7 +588,7 @@
         let charts = {};
         
         const navDict = {
-            'dashboard': { icon: 'fa-chart-line', label: 'المبيعات' },
+            'dashboard': { icon: 'fa-history', label: 'سجل الفواتير' },
             'performance': { icon: 'fa-chart-pie', label: 'لوحة الأداء' },
             'invoices': { icon: 'fa-file-invoice-dollar', label: 'الفواتير' },
             'customers': { icon: 'fa-users', label: 'العملاء' },
@@ -726,6 +737,25 @@
             return { invNum, dateStr };
         }
 
+        // ================= Invoice Date Helper =================
+        function isPastInvoice(inv) {
+            const now = new Date();
+            const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
+            let stStr = '';
+            if (inv.serviceTime) {
+                stStr = inv.serviceTime.split('T')[0];
+            } else {
+                const d = new Date(inv.date);
+                if (!isNaN(d.getTime())) {
+                    stStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                } else {
+                    stStr = todayStr;
+                }
+            }
+            return stStr < todayStr;
+        }
+
         // ================= Direct Login Logic =================
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault(); const u = document.getElementById('login-user').value.trim(); const p = document.getElementById('login-pass').value;
@@ -778,12 +808,26 @@
             if(id==='stock') renderStock();
         }
 
-        // ================= Dashboard =================
+        // ================= Dashboard (Past Invoices) =================
         function renderDashboard() {
-            const total = db.invoices.reduce((s,i)=>s+i.total,0); const totalDisc = db.invoices.reduce((s,i)=>s+(i.discountVal||0),0);
-            document.getElementById('dash-total-sales').innerText = total.toFixed(2) + ' SAR'; document.getElementById('dash-inv-count').innerText = db.invoices.length;
-            document.getElementById('dash-discount').innerText = totalDisc.toFixed(2) + ' SAR'; document.getElementById('dash-avg').innerText = (db.invoices.length ? (total/db.invoices.length) : 0).toFixed(2) + ' SAR';
-            if(charts.sales) charts.sales.destroy(); charts.sales = new Chart(document.getElementById('salesChart').getContext('2d'), { type: 'bar', data: { labels: ['إجمالي المبيعات'], datasets: [{ label:'مبيعات', data:[total], backgroundColor:'#8B3A2A' }] } });
+            const tbody = document.querySelector('#past-invoices-table tbody'); tbody.innerHTML = ''; 
+            const search = (document.getElementById('past-inv-search').value || '').toLowerCase();
+            
+            db.invoices.filter(i => isPastInvoice(i) && (i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search)))).forEach(inv => {
+                let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
+                let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
+
+                tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
+                    <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${inv.date.split(' ')[0]}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem; font-weight:bold; color:var(--primary); background: rgba(139, 58, 42, 0.05); padding: 4px 8px; border-radius: 4px;">${sTime}</span></td>
+                    <td style="text-align:right">${inv.customerName}</td>
+                    <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
+                    <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
+                    <td style="text-align:center"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
+                </tr>`;
+            });
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد فواتير سابقة مطابقة</td></tr>';
         }
 
         // ================= Performance Dashboard =================
@@ -986,39 +1030,612 @@
         function encodeProdImg(input) { const f = input.files[0]; if(f) { const r = new FileReader(); r.onload = e => { document.getElementById('prod-img-preview').src = e.target.result; document.getElementById('prod-img-preview').style.display = 'block'; document.getElementById('prod-img-b64').value = e.target.result; }; r.readAsDataURL(f); } }
 
         async function saveProduct(id) {
-            const nameAr = document.getElementById('prod-ar').value; 
-            const price = parseFloat(document.getElementById('prod-price').value); 
-            if(!nameAr || isNaN(price)) return;
+            const nameAr = document.getElementById('prod-ar').value; const price = parseFloat(document.getElementById('prod-price').value); if(!nameAr || isNaN(price)) return;
             const userName = currentUser.name || currentUser.username;
-            const dataObj = { 
-                name_ar: nameAr, 
-                cat_id: parseInt(document.getElementById('prod-cat').value), 
-                price: price, 
-                total_qty: parseInt(document.getElementById('prod-qty').value) || 0, 
-                active: document.getElementById('prod-active').checked, 
-                image: document.getElementById('prod-img-b64').value 
-            };
+            const dataObj = { name_ar: nameAr, cat_id: parseInt(document.getElementById('prod-cat').value), price: price, total_qty: parseInt(document.getElementById('prod-qty').value) || 0, active: document.getElementById('prod-active').checked, image: document.getElementById('prod-img-b64').value };
             showLoading();
             if(id) {
-                await supabaseClient.from('thawq_products').update(dataObj).eq('id', id); 
-                const idx = db.products.findIndex(x => x.id === id); 
-                if(idx > -1) db.products[idx] = { id, nameAr: dataObj.name_ar, catId: dataObj.cat_id, totalQty: dataObj.total_qty, ...dataObj, createdBy: db.products[idx].createdBy };
+                await supabaseClient.from('thawq_products').update(dataObj).eq('id', id); const idx = db.products.findIndex(x => x.id === id); if(idx > -1) db.products[idx] = { id, nameAr: dataObj.name_ar, catId: dataObj.cat_id, totalQty: dataObj.total_qty, ...dataObj, createdBy: db.products[idx].createdBy };
                 logAction('تعديل', 'صنف', `تعديل صنف: ${nameAr}`);
             } else {
                 dataObj.created_by = userName;
-                const { data } = await supabaseClient.from('thawq_products').insert([dataObj]).select(); 
-                if(data && data[0]) db.products.push({ id: data[0].id, nameAr: data[0].name_ar, catId: data[0].cat_id, totalQty: data[0].total_qty, createdBy: userName, ...data[0] });
+                const { data } = await supabaseClient.from('thawq_products').insert([dataObj]).select(); if(data && data[0]) db.products.push({ id: data[0].id, nameAr: data[0].name_ar, catId: data[0].cat_id, totalQty: data[0].total_qty, createdBy: userName, ...data[0] });
                 logAction('إضافة', 'صنف', `صنف جديد: ${nameAr}`);
             }
-            hideLoading(); closeModal(); renderProducts(); showToast('تم الحفظ بنجاح');
+            hideLoading(); closeModal(); renderProducts(); showToast('تم الحفظ');
         }
 
-        async function deleteProduct(id) {
-            if(confirm('تأكيد الحذف؟')) {
-                showLoading(); await supabaseClient.from('thawq_products').delete().eq('id', id);
-                db.products = db.products.filter(p => p.id !== id); logAction('حذف', 'صنف', `حذف صنف من النظام`); hideLoading(); renderProducts(); showToast('تم الحذف');
+        async function deleteProduct(id) { if(confirm('تأكيد الحذف؟')) { showLoading(); await supabaseClient.from('thawq_products').delete().eq('id', id); db.products = db.products.filter(p => p.id !== id); logAction('حذف', 'صنف', `حذف صنف من النظام`); hideLoading(); renderProducts(); showToast('تم الحذف'); } }
+
+        // ================= Invoices =================
+        function renderInvoices() {
+            const tbody = document.querySelector('#invoices-table tbody'); tbody.innerHTML = ''; const search = document.getElementById('inv-search').value.toLowerCase();
+            
+            db.invoices.filter(i => !isPastInvoice(i) && (i.invNumber.toLowerCase().includes(search) || (i.customerName && i.customerName.toLowerCase().includes(search)))).forEach(inv => {
+                let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
+                
+                let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
+
+                tbody.innerHTML += `<tr class="clickable-row" onclick="viewInvoiceDetails(${inv.id})">
+                    <td style="text-align:right"><span class="en-numbers">${inv.invNumber}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.85rem; color:var(--text-muted);">${inv.date.split(' ')[0]}</span></td>
+                    <td style="text-align:right"><span class="en-numbers" style="font-size:0.9rem; font-weight:bold; color:var(--primary); background: rgba(139, 58, 42, 0.05); padding: 4px 8px; border-radius: 4px;">${sTime}</span></td>
+                    <td style="text-align:right">${inv.customerName}</td>
+                    <td style="text-align:center"><span class="en-numbers">${inv.total.toFixed(2)}</span></td>
+                    <td style="text-align:center"><span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.85rem; font-weight:bold;">${inv.status}</span></td>
+                    <td style="text-align:center"><span class="created-by-badge"><i class="fas fa-user"></i> ${inv.createdBy}</span></td>
+                </tr>`;
+            });
+            if(tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">لا توجد فواتير حالية أو قادمة</td></tr>';
+        }
+        
+        function viewInvoiceDetails(id) {
+            const inv = db.invoices.find(i => i.id === id); if(!inv) return;
+            let itemsHtml = ''; inv.items.forEach(i => { itemsHtml += `<tr><td style="text-align:right; width:40%;">${i.name}</td><td style="text-align:center; width:20%;"><span class="en-numbers">${i.qty}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${parseFloat(i.price).toFixed(2)}</span></td><td style="text-align:center; width:20%;"><span class="en-numbers">${(i.price*i.qty).toFixed(2)}</span></td></tr>`; });
+            let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)'));
+            
+            let sTime = inv.serviceTime ? inv.serviceTime.replace('T', ' ') : 'غير محدد';
+
+            showModal(`
+                <div class="flex" style="justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h3 style="color:var(--primary); margin:0;">تفاصيل الفاتورة <span class="en-numbers" style="font-size:1rem;">${inv.invNumber}</span></h3>
+                        <span style="background:${statusColor}; padding:4px 10px; border-radius:4px; color:#fff; font-size:0.9rem;">${inv.status}</span>
+                    </div>
+                    <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <!-- 🌟 تعديل المحاذاة الشامل هنا 🌟 -->
+                <div class="grid grid-3" style="font-size:0.95rem; margin-bottom:20px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; text-align:center;">
+                    <div>
+                        <strong style="color:var(--text-muted); font-size:0.85rem; display:block; margin-bottom:5px;">العميل:</strong>
+                        <span style="font-weight:bold;">${inv.customerName}</span>
+                    </div>
+                    <div>
+                        <strong style="color:var(--text-muted); font-size:0.85rem; display:block; margin-bottom:5px;">تاريخ الإصدار:</strong>
+                        <span class="en-numbers" style="font-weight:bold; display:inline-block;">${inv.date}</span>
+                    </div>
+                    <div>
+                        <strong style="color:var(--primary); font-size:0.85rem; display:block; margin-bottom:5px;">وقت الخدمة:</strong>
+                        <span class="en-numbers" style="font-weight:bold; display:inline-block;">${sTime}</span>
+                    </div>
+                </div>
+
+                <div class="table-responsive"><table style="font-size:0.9rem; margin-bottom:20px; width:100%;"><thead><tr><th style="text-align:right;">الصنف</th><th style="text-align:center;">الكمية</th><th style="text-align:center;">السعر</th><th style="text-align:center;">الإجمالي</th></tr></thead><tbody>${itemsHtml}</tbody></table></div>
+                <div class="card" style="background:rgba(0,0,0,0.02); padding:15px; font-size:0.95rem;">
+                    <div class="flex" style="justify-content:space-between;"><span>المجموع الفرعي:</span> <span class="en-numbers">${inv.subtotal.toFixed(2)} SAR</span></div>
+                    <div class="flex" style="justify-content:space-between; margin-top:5px;"><span>الخصم:</span> <span class="en-numbers">${inv.discountVal.toFixed(2)} SAR</span></div>
+                    ${inv.status === 'مدفوع جزئيا' ? `<div class="flex" style="justify-content:space-between; margin-top:5px; color:var(--warning);"><span>المبلغ المدفوع:</span> <span class="en-numbers">${inv.paidAmount !== undefined ? parseFloat(inv.paidAmount).toFixed(2) : inv.total.toFixed(2)} SAR</span></div>` : ''}
+                    <hr style="margin:10px 0; border:0; border-top:1px solid var(--border);">
+                    <div class="flex" style="justify-content:space-between; font-weight:bold; font-size:1.2rem; color:var(--primary);"><span>الإجمالي:</span> <span class="en-numbers">${inv.total.toFixed(2)} SAR</span></div>
+                </div>
+                <div class="flex" style="justify-content:space-between; margin-top:25px; flex-wrap:wrap; gap:10px;">
+                    <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="btn btn-outline" onclick="printInvoice(${inv.id})"><i class="fas fa-print"></i> طباعة</button><button class="btn btn-success" onclick="sendInvoiceWA(${inv.id})"><i class="fab fa-whatsapp"></i> إرسال (PDF)</button></div>
+                    <!-- 🌟 زر تعديل الفاتورة الشامل 🌟 -->
+                    <div class="flex" style="gap:10px; flex-wrap:wrap;"><button class="icon-btn-solid warning" onclick="editFullInvoice(${inv.id})" title="تعديل الفاتورة بالكامل"><i class="fas fa-edit"></i></button>${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteInvoice(${inv.id})" title="حذف نهائي"><i class="fas fa-trash"></i></button>` : ''}</div>
+                </div>
+            `, 'modal-lg');
+        }
+
+        async function deleteInvoice(id) { 
+            if(confirm('تأكيد الحذف النهائي؟')) { 
+                const inv = db.invoices.find(i => i.id === id); showLoading(); await supabaseClient.from('thawq_invoices').delete().eq('id', id); db.invoices=db.invoices.filter(i=>i.id!=id); 
+                logAction('حذف', 'فاتورة', `حذف نهائي للفاتورة رقم ${inv ? inv.invNumber : id}`); hideLoading(); renderInvoices(); renderDashboard(); closeModal(); showToast('تم الحذف');
+            } 
+        }
+
+        function printInvoice(id) {
+            const inv = db.invoices.find(i => i.id === id); if(!inv) return;
+            document.getElementById('print-store-name').innerText = db.settings.storeName; document.getElementById('print-vat-num').innerText = db.settings.vatNumber || '-'; document.getElementById('print-phone').innerText = db.settings.phone || '-'; document.getElementById('print-inv-num').innerText = inv.invNumber; document.getElementById('print-date').innerText = inv.date; document.getElementById('print-customer').innerText = inv.customerName; document.getElementById('print-status').innerText = inv.status;
+            document.getElementById('print-cashier').innerText = inv.createdBy;
+            const tbody = document.getElementById('print-items'); tbody.innerHTML = ''; inv.items.forEach(i => { tbody.innerHTML += `<tr><td style="text-align:right">${i.name}</td><td class="en-numbers-center">${i.qty}</td><td class="en-numbers-center">${parseFloat(i.price).toFixed(2)}</td><td class="en-numbers-center">${(i.price*i.qty).toFixed(2)}</td></tr>`; });
+            document.getElementById('print-subtotal').innerText = inv.subtotal.toFixed(2); document.getElementById('print-discount').innerText = inv.discountVal.toFixed(2); document.getElementById('print-total').innerText = inv.total.toFixed(2);
+            if(inv.status === 'مدفوع جزئيا') { document.getElementById('print-paid-row').style.display = 'block'; document.getElementById('print-paid-amount').innerText = (inv.paidAmount !== undefined ? parseFloat(inv.paidAmount) : parseFloat(inv.total)).toFixed(2); } else { document.getElementById('print-paid-row').style.display = 'none'; }
+            logAction('طباعة', 'فاتورة', `طباعة الفاتورة رقم ${inv.invNumber}`); document.getElementById('print-view').classList.add('active-print'); window.print(); setTimeout(() => document.getElementById('print-view').classList.remove('active-print'), 1000);
+        }
+
+        async function sendInvoiceWA(id) {
+            const inv = db.invoices.find(i => i.id === id); if(!inv) return;
+            let phone = ''; 
+            if(inv.customerId) { const c = db.customers.find(x => x.id == inv.customerId); if(c && c.phone) phone = c.phone; }
+            if (!phone || phone.trim() === '') { return showToast('لا يمكن الإرسال: هذا العميل لا يمتلك رقم جوال مسجل!', 'error'); }
+            if(phone.startsWith('0')) phone = '966' + phone.substring(1);
+
+            showLoading('جاري إرسال بيانات الفاتورة للسيرفر...');
+            try {
+                const webhookUrl = 'https://n8n-p10bgpahkliy9hghak21zv3e.178.105.219.96.sslip.io/webhook/send-invoice';
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: phone, customerName: inv.customerName, invNumber: inv.invNumber, storeName: db.settings.storeName, vatNumber: db.settings.vatNumber || '', storePhone: db.settings.phone || '', storeLogo: db.settings.logo || '', date: inv.date, status: inv.status, items: inv.items, subtotal: inv.subtotal, discountVal: inv.discountVal, total: inv.total, paidAmount: inv.paidAmount !== undefined ? inv.paidAmount : inv.total, cashier: inv.createdBy
+                    })
+                });
+                hideLoading();
+                if(response.ok) { logAction('إرسال', 'فاتورة', `إرسال الفاتورة ${inv.invNumber} واتساب تلقائياً`); showToast('تم إرسال الفاتورة عبر الواتساب بنجاح!'); } else { showToast('فشل الإرسال: تأكد من تفعيل المسار في n8n', 'error'); }
+            } catch (error) { hideLoading(); console.error(error); showToast('حدث خطأ أثناء الاتصال بالسيرفر', 'error'); }
+        }
+
+        // ================= POS Cart & Full Edit =================
+        let posCart = [];
+        let editingInvoiceId = null; // 🌟 متغير لمعرفة إذا كنا في وضع التعديل
+
+        function createNewInvoice() {
+            editingInvoiceId = null;
+            openPOSModal();
+        }
+
+        // 🌟 دالة تعديل الفاتورة الشاملة 🌟
+        function editFullInvoice(id) {
+            editingInvoiceId = id;
+            const inv = db.invoices.find(i => i.id === id);
+            if(!inv) return;
+            
+            closeModal(); // إغلاق شاشة التفاصيل
+            openPOSModal(); // فتح شاشة الكاشير
+            
+            // الانتظار قليلاً حتى تُرسم الشاشة ثم تعبئتها ببيانات الفاتورة
+            setTimeout(() => {
+                document.getElementById('pos-cust').value = inv.customerId;
+                document.getElementById('pos-service-time').value = inv.serviceTime || '';
+                
+                // استنتاج نسبة الخصم
+                let discPercent = 0;
+                if(inv.subtotal > 0 && inv.discountVal > 0) {
+                    discPercent = (inv.discountVal / inv.subtotal) * 100;
+                }
+                document.getElementById('pos-disc').value = discPercent.toFixed(0);
+                
+                // تعبئة السلة
+                posCart = JSON.parse(JSON.stringify(inv.items));
+                
+                // تعبئة حالة الدفع
+                const payStatusDropdown = document.getElementById('pos-pay-status');
+                if(payStatusDropdown) {
+                    payStatusDropdown.value = inv.status;
+                    togglePOSPaidInput(inv.status);
+                    if(inv.status === 'مدفوع جزئيا') {
+                        document.getElementById('pos-paid-amount').value = inv.paidAmount;
+                    }
+                }
+                
+                // تغيير زر الإصدار إلى تحديث
+                const btn = document.getElementById('btn-checkout');
+                if(btn) btn.innerText = 'حفظ التعديلات';
+                
+                posCustomerChanged();
+                renderCart();
+                renderPOSProductsModal();
+            }, 100);
+        }
+
+        function openPOSModal() {
+            if(!editingInvoiceId) posCart = []; 
+            
+            // 🌟 تعديل: الخيار الافتراضي للعميل فارغ 🌟
+            let custOpts = '<option value="" disabled selected>-- اختر العميل --</option>'; 
+            db.customers.forEach(c => custOpts += `<option value="${c.id}">${c.name} ${c.phone?'- '+c.phone:''}</option>`);
+            
+            let catOpts = '<option value="all">كل الفئات</option>'; db.categories.forEach(c => catOpts += `<option value="${c.id}">${c.nameAr}</option>`);
+            
+            let now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            let currentDateTime = now.toISOString().slice(0,16);
+
+            showModal(`
+            <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+                <h3 style="color:var(--primary); margin:0;">${editingInvoiceId ? 'تعديل الفاتورة' : 'سلة المبيعات (POS)'}</h3>
+                <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                <select id="pos-cust" style="flex:1; min-width:150px; margin:0;" onchange="posCustomerChanged()">${custOpts}</select>
+                <button class="icon-btn-solid info" style="margin:0;" onclick="toggleQuickAddCustomer()" title="إضافة عميل جديد سريع"><i class="fas fa-user-plus"></i></button>
+                <select id="pos-cat-filter-modal" style="width:150px; cursor:pointer; margin:0;" onchange="renderPOSProductsModal()">${catOpts}</select>
+            </div>
+
+            <div id="quick-add-cust-div" class="hidden" style="background:rgba(0,0,0,0.02); padding:10px; border-radius:6px; border:1px solid var(--border); margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <input type="text" id="quick-cust-name" placeholder="الاسم" style="flex:1; margin:0; min-width:120px;" required>
+                <input type="text" id="quick-cust-phone" placeholder="الجوال (ex: 05...)" class="en-numbers" style="flex:1; margin:0; min-width:120px;" required>
+                <button class="btn btn-success" style="padding: 10px;" onclick="quickSaveCustomer()">حفظ واختيار</button>
+            </div>
+            
+            <div class="pos-container">
+                <div class="pos-products" id="pos-products-grid"></div>
+                <div class="pos-cart">
+                    <div class="cart-items" id="pos-cart-items"></div>
+                    <div style="font-size:0.9rem;">
+                        
+                        <div style="background: rgba(139, 58, 42, 0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border);">
+                            <label style="font-size:0.85rem; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">تاريخ ووقت الخدمة:</label>
+                            <input type="datetime-local" id="pos-service-time" class="en-numbers" lang="en-US" dir="ltr" value="${currentDateTime}" onchange="renderPOSProductsModal()" style="margin: 0; padding: 5px; font-size: 0.9rem; width: 100%; text-align: left;">
+                        </div>
+
+                        <div class="flex" style="justify-content:space-between;"><span>المجموع:</span> <span id="pos-sub" class="en-numbers">0</span></div>
+                        <div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;">
+                            <span>الخصم الإضافي (%):</span> 
+                            <input type="number" id="pos-disc" class="en-numbers" style="width:60px; padding:5px; margin:0; text-align:center;" value="0" min="0" max="100" onkeyup="updateCartTotals()" onchange="updateCartTotals()">
+                        </div>
+
+                        <!-- 🌟 قسم إضافة الدفع قبل الإصدار 🌟 -->
+                        <div class="flex" style="justify-content:space-between; margin:8px 0; align-items:center;">
+                            <span>حالة الدفع:</span>
+                            <select id="pos-pay-status" onchange="togglePOSPaidInput(this.value)" class="en-numbers" style="width:auto; margin:0; padding:5px; text-align:right;">
+                                <option value="مدفوع بالكامل">مدفوع بالكامل</option>
+                                <option value="مدفوع جزئيا">مدفوع جزئيا</option>
+                                <option value="غير مدفوع">غير مدفوع</option>
+                            </select>
+                        </div>
+                        <div class="flex hidden" id="pos-paid-amount-div" style="justify-content:space-between; margin:8px 0; align-items:center;">
+                            <span style="color:var(--warning);">المبلغ المدفوع:</span>
+                            <input type="number" id="pos-paid-amount" class="en-numbers" style="width:80px; padding:5px; margin:0; text-align:center; border-color:var(--warning);">
+                        </div>
+
+                        <div class="flex hidden" id="pos-wallet-container" style="justify-content:space-between; margin:8px 0; align-items:center; background: rgba(40, 167, 69, 0.1); padding: 8px; border-radius: 6px; border: 1px solid var(--success);">
+                            <label style="margin:0; color:var(--success); font-weight:bold; cursor:pointer;" class="flex">
+                                <input type="checkbox" id="pos-use-wallet" style="width:auto; margin:0 0 0 8px;" onchange="updateCartTotals()"> 
+                                استخدام المحفظة (<span id="pos-wallet-amount" class="en-numbers">0</span>)
+                            </label>
+                            <span id="pos-wallet-deduction" class="en-numbers" style="color:var(--danger)">0.00</span>
+                        </div>
+
+                        <hr style="margin:10px 0; border-top:1px solid var(--border);">
+                        <div class="flex" style="justify-content:space-between; font-weight:bold; font-size:1.2rem; color:var(--primary);">
+                            <span>الإجمالي:</span> <span id="pos-total" class="en-numbers">0</span>
+                        </div>
+                        <button id="btn-checkout" class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="checkout()">إصدار الفاتورة</button>
+                        <button class="btn btn-outline" style="width:100%; margin-top:5px;" onclick="closeModal()">إلغاء</button>
+                    </div>
+                </div>
+            </div>`, 'modal-lg');
+            
+            if(!editingInvoiceId) {
+                renderPOSProductsModal(); 
+                posCustomerChanged(); 
+                updateCartTotals();
             }
         }
+        
+        // 🌟 إظهار وإخفاء حقل المبلغ المدفوع في الـ POS 🌟
+        function togglePOSPaidInput(val) {
+            const div = document.getElementById('pos-paid-amount-div');
+            if(div) {
+                div.style.display = (val === 'مدفوع جزئيا') ? 'flex' : 'none';
+                div.classList.toggle('hidden', val !== 'مدفوع جزئيا');
+            }
+        }
+
+        function posCustomerChanged() {
+            const custId = document.getElementById('pos-cust').value;
+            const cust = db.customers.find(c => c.id == custId);
+            const walletContainer = document.getElementById('pos-wallet-container');
+            const walletCheckbox = document.getElementById('pos-use-wallet');
+            
+            if(cust && cust.walletBalance > 0) {
+                walletContainer.classList.remove('hidden');
+                document.getElementById('pos-wallet-amount').innerText = cust.walletBalance.toFixed(2);
+            } else {
+                walletContainer.classList.add('hidden');
+                if(walletCheckbox) walletCheckbox.checked = false;
+            }
+            updateCartTotals();
+        }
+
+        function toggleQuickAddCustomer() { const div = document.getElementById('quick-add-cust-div'); if(div) div.classList.toggle('hidden'); }
+
+        async function quickSaveCustomer() {
+            const name = document.getElementById('quick-cust-name').value.trim(); const phone = document.getElementById('quick-cust-phone').value.trim();
+            if(!name || !phone) return showToast('الرجاء إدخال الاسم ورقم الجوال', 'error');
+            const userName = currentUser.name || currentUser.username;
+            const dataObj = { name: name, phone: phone, created_by: userName, wallet_balance: 0 }; 
+
+            showLoading('جاري الحفظ...');
+            const { data, error } = await supabaseClient.from('thawq_customers').insert([dataObj]).select();
+            hideLoading();
+
+            if (error) return showToast('حدث خطأ أثناء الحفظ', 'error');
+
+            if(data && data[0]) {
+                const newCust = { id: data[0].id, createdBy: userName, walletBalance: 0, ...dataObj };
+                db.customers.push(newCust);
+                logAction('إضافة', 'عميل', `تسجيل عميل جديد من شاشة الفاتورة: ${name}`);
+
+                const custSel = document.getElementById('pos-cust');
+                const opt = document.createElement('option');
+                opt.value = newCust.id; opt.text = `${newCust.name} ${newCust.phone ? '- '+newCust.phone : ''}`;
+                custSel.add(opt); custSel.value = newCust.id;
+
+                toggleQuickAddCustomer();
+                document.getElementById('quick-cust-name').value = ''; document.getElementById('quick-cust-phone').value = '';
+                showToast('تم حفظ العميل بنجاح'); renderCustomers(); posCustomerChanged();
+            }
+        }
+
+        function renderPOSProductsModal() { 
+            const grid = document.getElementById('pos-products-grid'); 
+            const filter = document.getElementById('pos-cat-filter-modal').value; 
+            const targetDateStr = document.getElementById('pos-service-time').value;
+
+            grid.innerHTML = ''; 
+            db.products.filter(p => p.active && (filter === 'all' || p.catId == filter)).forEach(p => { 
+                const img = p.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; 
+                
+                const available = getAvailableQty(p.id, targetDateStr);
+                const currentCartItem = posCart.find(i => i.id === p.id);
+                const cartQty = currentCartItem ? currentCartItem.qty : 0;
+                const netAvailable = available - cartQty;
+
+                const isOutOfStock = netAvailable <= 0;
+                const cardStyle = isOutOfStock ? 'opacity:0.5; filter:grayscale(1); cursor:not-allowed;' : '';
+                const clickAction = isOutOfStock ? `showToast('الكمية نفذت لهذا اليوم!', 'error')` : `addToCart(${p.id}, '${p.nameAr}', ${p.price})`;
+                const stockColor = isOutOfStock ? 'var(--danger)' : 'var(--success)';
+
+                grid.innerHTML += `
+                <div class="pos-item-card" style="${cardStyle}" onclick="${clickAction}">
+                    <img src="${img}" class="pos-item-img">
+                    <div class="pos-item-info">
+                        <strong>${p.nameAr}</strong>
+                        <span style="color:var(--primary)" class="en-numbers">${p.price} SAR</span>
+                        <span style="font-size:0.85rem; color:${stockColor}; font-weight:bold;" class="en-numbers">متاح: ${netAvailable}</span>
+                    </div>
+                </div>`; 
+            }); 
+        }
+
+        function addToCart(id, name, price) { const ex = posCart.find(i => i.id === id); if(ex) ex.qty++; else posCart.push({ id, name, price, qty: 1 }); renderCart(); renderPOSProductsModal(); }
+        function changeQty(id, d) { const item = posCart.find(i => i.id === id); if(item) { item.qty += d; if(item.qty <= 0) posCart = posCart.filter(i => i.id !== id); renderCart(); renderPOSProductsModal(); } }
+        
+        function renderCart() { const list = document.getElementById('pos-cart-items'); list.innerHTML = ''; posCart.forEach(i => { list.innerHTML += `<div class="cart-row"><div style="flex:1;">${i.name}</div><div style="display:flex; gap:5px; align-items:center;"><button class="cart-qty-btn" onclick="changeQty(${i.id}, 1)">+</button><span class="en-numbers">${i.qty}</span><button class="cart-qty-btn" onclick="changeQty(${i.id}, -1)">-</button></div><div style="width:60px; text-align:left;" class="en-numbers">${(i.price * i.qty).toFixed(2)}</div></div>`; }); updateCartTotals(); }
+        
+        function updateCartTotals() { 
+            const sub = posCart.reduce((s,i)=>s+(i.price*i.qty),0); 
+            const discInput = document.getElementById('pos-disc'); 
+            const discPercent = parseFloat(discInput ? discInput.value : 0) || 0; 
+            let discVal = sub * (discPercent / 100); 
+            
+            let walletDeduction = 0;
+            const useWalletCheckbox = document.getElementById('pos-use-wallet');
+            
+            if(useWalletCheckbox && useWalletCheckbox.checked) {
+                const custId = document.getElementById('pos-cust').value;
+                const cust = db.customers.find(c => c.id == custId);
+                if(cust) {
+                    const remainingAfterDisc = Math.max(0, sub - discVal);
+                    walletDeduction = Math.min(remainingAfterDisc, cust.walletBalance || 0);
+                }
+            }
+            
+            if(document.getElementById('pos-wallet-deduction')) {
+                document.getElementById('pos-wallet-deduction').innerText = '-' + walletDeduction.toFixed(2);
+            }
+
+            const total = Math.max(0, sub - discVal - walletDeduction); 
+            
+            if(document.getElementById('pos-sub')) { 
+                document.getElementById('pos-sub').innerText = sub.toFixed(2); 
+                document.getElementById('pos-total').innerText = total.toFixed(2); 
+            } 
+            return { sub, discVal, walletDeduction, total }; 
+        }
+
+        async function checkout() {
+            if(posCart.length === 0) return showToast('السلة فارغة', 'error'); 
+            const t = updateCartTotals(); 
+            const custSel = document.getElementById('pos-cust'); 
+            if(!custSel.value) return showToast('يجب اختيار عميل', 'error');
+            
+            const serviceTime = document.getElementById('pos-service-time').value;
+            const payStatus = document.getElementById('pos-pay-status').value;
+            
+            // 🌟 حساب المبلغ المدفوع بناءً على الحالة المختارة 🌟
+            let finalPaidAmount = 0;
+            if(payStatus === 'مدفوع بالكامل') finalPaidAmount = t.total;
+            else if(payStatus === 'غير مدفوع') finalPaidAmount = 0;
+            else finalPaidAmount = parseFloat(document.getElementById('pos-paid-amount').value) || 0;
+
+            const userName = currentUser.name || currentUser.username;
+            let custRawText = custSel.options[custSel.selectedIndex].text; 
+            let cleanCustName = custRawText.split(' -')[0].trim();
+            const totalDiscountForInvoice = t.discVal + t.walletDeduction;
+
+            showLoading(editingInvoiceId ? 'جاري تحديث الفاتورة...' : 'جاري إصدار الفاتورة...');
+
+            if (editingInvoiceId) {
+                // ================= وضع تحديث الفاتورة =================
+                const existingInv = db.invoices.find(i => i.id === editingInvoiceId);
+                const dataObj = { 
+                    service_time: serviceTime, 
+                    customer_id: parseInt(custSel.value), 
+                    customer_name: cleanCustName, 
+                    items: posCart, 
+                    subtotal: t.sub, 
+                    discount_val: totalDiscountForInvoice, 
+                    total: t.total, 
+                    status: payStatus, 
+                    paid_amount: finalPaidAmount
+                };
+                
+                const { error } = await supabaseClient.from('thawq_invoices').update(dataObj).eq('id', editingInvoiceId);
+                if (!error) {
+                    Object.assign(existingInv, {
+                        serviceTime: dataObj.service_time, customerId: dataObj.customer_id, customerName: dataObj.customer_name, items: dataObj.items, subtotal: dataObj.subtotal, discountVal: dataObj.discount_val, total: dataObj.total, status: dataObj.status, paidAmount: dataObj.paid_amount
+                    });
+                    
+                    logAction('تعديل', 'فاتورة', `تعديل شامل للفاتورة رقم ${existingInv.invNumber}`);
+                    hideLoading(); closeModal(); renderInvoices(); renderDashboard(); showToast('تم التحديث بنجاح');
+                    editingInvoiceId = null; 
+                } else {
+                    hideLoading(); showToast('حدث خطأ أثناء التحديث', 'error');
+                }
+            } else {
+                // ================= وضع إنشاء فاتورة جديدة =================
+                const meta = generateInvoiceMeta(); 
+                const dataObj = { 
+                    inv_number: meta.invNum, date: meta.dateStr, service_time: serviceTime, customer_id: parseInt(custSel.value), customer_name: cleanCustName, items: posCart, subtotal: t.sub, discount_val: totalDiscountForInvoice, total: t.total, status: payStatus, paid_amount: finalPaidAmount, created_by: userName 
+                };
+                
+                const { data } = await supabaseClient.from('thawq_invoices').insert([dataObj]).select();
+                
+                if(data && data[0]) { 
+                    db.invoices.unshift({ 
+                        id: data[0].id, invNumber: data[0].inv_number, date: data[0].date, serviceTime: data[0].service_time, customerId: data[0].customer_id, customerName: data[0].customer_name, items: data[0].items, subtotal: data[0].subtotal, discountVal: data[0].discount_val, total: data[0].total, status: data[0].status, paidAmount: data[0].paid_amount, createdBy: userName 
+                    }); 
+
+                    if(t.walletDeduction > 0) {
+                        const cust = db.customers.find(c => c.id == parseInt(custSel.value));
+                        if(cust) {
+                            const newBalance = cust.walletBalance - t.walletDeduction;
+                            await supabaseClient.from('thawq_customers').update({ wallet_balance: newBalance }).eq('id', cust.id);
+                            cust.walletBalance = newBalance;
+                            logAction('خصم', 'محفظة عميل', `خصم ${t.walletDeduction} ريال من محفظة ${cleanCustName} لدفع فاتورة ${meta.invNum}`);
+                        }
+                    }
+                }
+                logAction('إضافة', 'فاتورة', `إصدار فاتورة جديدة رقم ${meta.invNum} للعميل ${cleanCustName}`); 
+                hideLoading(); closeModal(); renderInvoices(); renderDashboard(); showToast('تم الإصدار');
+            }
+        }
+
+        // ================= Customers =================
+        function renderCustomers() {
+            const grid = document.getElementById('customers-grid'); grid.innerHTML = ''; const search = document.getElementById('cust-search').value.toLowerCase();
+            db.customers.filter(c=>c.name.toLowerCase().includes(search) || c.phone.includes(search)).forEach(c => { grid.innerHTML += `<div class="card clickable-row" onclick="viewCustomerDetails(${c.id})"><h3 style="color:var(--primary)">${c.name}</h3><p class="en-numbers" style="text-align:right; margin-top:5px;"><i class="fas fa-phone"></i> ${c.phone||'-'}</p><div style="font-size:0.8rem; color:var(--text-muted); margin-top:10px;"><i class="fas fa-user-circle"></i> ${c.createdBy}</div></div>`; });
+        }
+
+        function viewCustomerDetails(id) {
+            const c = db.customers.find(x => x.id === id); if(!c) return;
+            const custInvoices = db.invoices.filter(i => i.customerId == id); let historyHtml = '';
+            if(custInvoices.length === 0) { historyHtml = '<tr><td colspan="4" style="text-align:center;">لا توجد طلبات سابقة</td></tr>'; } 
+            else { custInvoices.forEach(inv => { let statusColor = inv.status==='مدفوع بالكامل' ? 'var(--success)' : (inv.status==='مدفوع جزئيا' ? 'var(--warning)' : (inv.status==='ملغاة' ? '#666' : 'var(--danger)')); historyHtml += `<tr class="clickable-row" onclick="closeModal(); viewInvoiceDetails(${inv.id})"><td class="en-numbers" style="text-align:right">${inv.invNumber}</td><td class="en-numbers" style="text-align:right">${inv.date.split(' ')[0]}</td><td class="en-numbers-center">${inv.total.toFixed(2)}</td><td><span style="background:${statusColor}; padding:2px 6px; border-radius:4px; color:#fff; font-size:0.8rem;">${inv.status}</span></td></tr>`; }); }
+
+            showModal(`
+                <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+                    <h3 style="color:var(--primary); margin:0;">ملف العميل: ${c.name}</h3>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <div style="display:flex; gap:5px;">
+                            <button class="icon-btn-solid success" style="background:var(--success);" onclick="chargeWallet(${c.id})" title="شحن الرصيد (مكافأة)"><i class="fas fa-wallet"></i></button>
+                            <button class="icon-btn-solid warning" onclick="openCustomerModal(${c.id})"><i class="fas fa-edit"></i></button>
+                            ${currentUser.permissions['users'] ? `<button class="icon-btn-solid danger" onclick="deleteCustomer(${c.id})"><i class="fas fa-trash"></i></button>` : ''}
+                        </div>
+                        <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="grid grid-2" style="font-size:0.95rem; margin-bottom:20px;">
+                    <div><strong>الجوال:</strong> <span class="en-numbers" style="float:left;">${c.phone||'-'}</span></div>
+                    <div><strong>رصيد المحفظة:</strong> <span class="en-numbers" style="float:left; color:var(--success); font-weight:bold;">${c.walletBalance || 0} SAR</span></div>
+                    <div><strong>العنوان الأساسي:</strong><br>${c.address1||'-'}</div>
+                    <div><strong>العنوان الإضافي:</strong><br>${c.address2||'-'}</div>
+                    <div style="grid-column: 1 / -1;"><strong>ملاحظات:</strong><br><p style="background:rgba(0,0,0,0.02); padding:10px; border-radius:6px; min-height:40px;">${c.notes||'لا توجد ملاحظات'}</p></div>
+                </div>
+                <h4 style="color:var(--primary); margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:5px;">سجل الطلبات</h4>
+                <div class="table-responsive"><table style="font-size:0.9rem; margin-top:0; min-width:100%;"><thead><tr><th style="text-align:right">رقم الفاتورة</th><th style="text-align:right">التاريخ</th><th style="text-align:center">المجموع</th><th style="text-align:right">الحالة</th></tr></thead><tbody>${historyHtml}</tbody></table></div>
+            `, 'modal-lg');
+        }
+
+        async function chargeWallet(id) {
+            const c = db.customers.find(x => x.id === id); if(!c) return;
+            const amountStr = prompt(`أدخل المبلغ المراد إضافته لمحفظة العميل (${c.name}):\n(مثال لمكافأة الإحالة: 50)`);
+            if(!amountStr) return;
+            const amount = parseFloat(amountStr);
+            if(isNaN(amount) || amount <= 0) return showToast('يرجى إدخال مبلغ صحيح', 'error');
+
+            const newBalance = (c.walletBalance || 0) + amount;
+            showLoading('جاري تحديث المحفظة...');
+            await supabaseClient.from('thawq_customers').update({ wallet_balance: newBalance }).eq('id', id);
+            c.walletBalance = newBalance;
+            logAction('تعديل', 'محفظة عميل', `إضافة ${amount} ريال لمحفظة ${c.name}. الرصيد الجديد: ${newBalance}`);
+            hideLoading();
+            viewCustomerDetails(id); renderCustomers(); showToast(`تم شحن المحفظة بـ ${amount} ريال بنجاح!`);
+        }
+
+        function openCustomerModal(id = null) {
+            const c = id ? db.customers.find(x => x.id === id) : { name:'', phone:'', address1:'', address2:'', notes:'' };
+            showModal(`
+            <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+                <h3 style="color:var(--primary); margin:0;">${id ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'}</h3>
+                <button onclick="${id ? `viewCustomerDetails(${id})` : 'closeModal()'}" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="grid grid-2"><div><label>الاسم</label><input type="text" id="nc-name" value="${c.name}" required><label>العنوان الأساسي</label><input type="text" id="nc-addr1" value="${c.address1||''}"></div><div><label>الجوال</label><input type="text" id="nc-phone" class="en-numbers" value="${c.phone||''}"><label>العنوان الإضافي</label><input type="text" id="nc-addr2" value="${c.address2||''}"></div></div><label>ملاحظات</label><textarea id="nc-notes" rows="3">${c.notes||''}</textarea><div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="${id ? `viewCustomerDetails(${id})` : 'closeModal()'}">إلغاء</button><button class="btn btn-primary" onclick="saveCustomer(${id || 'null'})">حفظ</button></div>`);
+        }
+
+        async function saveCustomer(id) {
+            const n = document.getElementById('nc-name').value; if(!n) return showToast('الرجاء إدخال اسم العميل', 'error');
+            const userName = currentUser.name || currentUser.username;
+            const dataObj = { name: n, phone: document.getElementById('nc-phone').value, address1: document.getElementById('nc-addr1').value, address2: document.getElementById('nc-addr2').value, notes: document.getElementById('nc-notes').value };
+            showLoading('جاري الحفظ...');
+            if(id) { 
+                await supabaseClient.from('thawq_customers').update(dataObj).eq('id', id); 
+                const idx = db.customers.findIndex(x => x.id === id); if(idx > -1) db.customers[idx] = { id, walletBalance: db.customers[idx].walletBalance, ...dataObj, createdBy: db.customers[idx].createdBy }; 
+                logAction('تعديل', 'عميل', `تحديث بيانات العميل: ${n}`);
+            } else { 
+                dataObj.created_by = userName; dataObj.wallet_balance = 0;
+                const { data } = await supabaseClient.from('thawq_customers').insert([dataObj]).select(); 
+                if(data && data[0]) db.customers.push({ id: data[0].id, walletBalance: 0, createdBy: userName, ...dataObj }); 
+                logAction('إضافة', 'عميل', `تسجيل عميل جديد: ${n}`);
+            }
+            hideLoading(); renderCustomers(); if(id) viewCustomerDetails(id); else closeModal(); showToast('تم الحفظ');
+        }
+
+        async function deleteCustomer(id) {
+            if(confirm('تأكيد الحذف النهائي؟')) { const c = db.customers.find(x => x.id === id); showLoading(); await supabaseClient.from('thawq_customers').delete().eq('id', id); db.customers = db.customers.filter(x => x.id !== id); logAction('حذف', 'عميل', `قام الموظف بحذف العميل: ${c ? c.name : id}`); hideLoading(); renderCustomers(); closeModal(); showToast('تم الحذف'); }
+        }
+
+        // ================= Direct Database Users Management =================
+        function renderUsers() {
+            const tbody = document.querySelector('#users-table tbody'); tbody.innerHTML = '';
+            db.users.forEach(u => { tbody.innerHTML += `<tr><td style="text-align:right">${u.name}</td><td class="en-numbers" style="text-align:right">${u.username}</td><td style="text-align:center">${u.active?'فعال':'معطل'}</td><td style="text-align:center"><button class="icon-btn-solid warning" onclick="openUserModal(${u.id})" style="display:inline-flex;"><i class="fas fa-edit"></i></button></td></tr>`; });
+        }
+
+        function openUserModal(id=null) {
+            const u = id ? db.users.find(x=>x.id==id) : {name:'', username:'', pass:'', active:true, permissions:{}};
+            const isAdmin = u.username.includes('admin') || u.username.includes('smartflow') || (u.permissions && u.permissions['users']); 
+            let permsHTML = '<div class="perm-grid">'; Object.keys(navDict).forEach(k => { const checked = (isAdmin || (u.permissions && u.permissions[k])) ? 'checked' : ''; const disabled = isAdmin ? 'disabled' : ''; permsHTML += `<label class="checkbox-box"><input type="checkbox" id="perm-${k}" ${checked} ${disabled}><span>${navDict[k].label}</span></label>`; }); permsHTML += '</div>';
+
+            showModal(`
+            <div class="flex" style="justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+                <h3 style="color:var(--primary); margin:0;">${id?'تعديل مستخدم':'مستخدم جديد'}</h3>
+                <button onclick="closeModal()" style="background:rgba(0,0,0,0.05); border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-muted); cursor:pointer; transition:0.2s;"><i class="fas fa-times"></i></button>
+            </div>
+            <input type="text" id="usr-name" placeholder="الاسم" value="${u.name}" required><input type="text" id="usr-user" placeholder="اسم المستخدم" class="en-numbers" value="${u.username}" required><input type="text" id="usr-pass" placeholder="كلمة المرور" class="en-numbers" value="${u.pass||''}" required><label class="checkbox-box" style="margin-top:10px; border-color:var(--primary); background:rgba(139, 58, 42, 0.05);"><input type="checkbox" id="usr-active" ${u.active?'checked':''} ${isAdmin?'disabled':''}> <span style="color:var(--primary); font-weight:bold;">حساب فعال (يُسمح له بالدخول للنظام)</span></label><hr style="margin:20px 0; border:0; border-top:1px solid var(--border);"><h4 style="margin-bottom:15px; color:var(--text);">صلاحيات الأقسام</h4>${permsHTML}<div class="flex" style="justify-content:flex-end; gap:10px; margin-top:20px;"><button class="btn btn-outline" onclick="closeModal()">إلغاء</button><button class="btn btn-primary" onclick="saveUser(${id||'null'})">حفظ المستخدم</button></div>`);
+        }
+
+        async function saveUser(id) {
+            const userInput = document.getElementById('usr-user').value.trim(); const passInput = document.getElementById('usr-pass').value; if(!userInput || !passInput) return showToast('بيانات غير مكتملة', 'error');
+            const d = { name: document.getElementById('usr-name').value, username: userInput, pass: passInput, active: document.getElementById('usr-active').checked, permissions: {} };
+            Object.keys(navDict).forEach(k => { const el = document.getElementById(`perm-${k}`); d.permissions[k] = el ? el.checked : false; });
+            showLoading();
+            if(id) { if(d.username.includes('admin') || d.username.includes('smartflow')) { d.active = true; Object.keys(navDict).forEach(k => d.permissions[k] = true); } await supabaseClient.from('thawq_users').update(d).eq('id', id); const idx = db.users.findIndex(x=>x.id==id); if(idx > -1) db.users[idx] = {id, ...d}; logAction('تعديل', 'نظام', `تعديل مستخدم: ${userInput}`); } 
+            else { const {data} = await supabaseClient.from('thawq_users').insert([d]).select(); if(data && data[0]) db.users.push({id: data[0].id, ...d}); logAction('إضافة', 'نظام', `إنشاء مستخدم: ${userInput}`); }
+            hideLoading(); closeModal(); renderUsers(); if(currentUser && d.username === currentUser.username) { currentUser = db.users.find(u=>u.username===d.username); sessionStorage.setItem('thawq_session', JSON.stringify(currentUser)); renderSidebar(); } showToast('تم الحفظ');
+        }
+
+        // ================= Settings =================
+        function loadSettingsUI() { document.getElementById('set-storeName').value = db.settings.storeName; document.getElementById('set-phone').value = db.settings.phone || ''; document.getElementById('set-vatNumber').value = db.settings.vatNumber || ''; document.getElementById('set-theme').value = db.settings.theme; document.getElementById('set-logo-b64').value = db.settings.logo || ''; const logoPrev = document.getElementById('set-logo-preview'); if(db.settings.logo) { logoPrev.src = db.settings.logo; logoPrev.style.display = 'block'; } else { logoPrev.style.display = 'none'; } renderReorderList(); }
+        function encodeStoreLogo(input) { const f = input.files[0]; if(f) { const r = new FileReader(); r.onload = e => { document.getElementById('set-logo-preview').src = e.target.result; document.getElementById('set-logo-preview').style.display = 'block'; document.getElementById('set-logo-b64').value = e.target.result; }; r.readAsDataURL(f); } }
+        function renderReorderList() { const list = document.getElementById('reorder-nav-list'); list.innerHTML = ''; db.settings.navOrder.forEach((key, index) => { list.innerHTML += `<li class="reorder-item"><span><i class="fas ${navDict[key].icon}" style="margin-left:5px;"></i> ${navDict[key].label}</span><div><button class="icon-btn" onclick="moveNav(${index}, -1)" ${index===0?'disabled style="opacity:0.3"':''}><i class="fas fa-arrow-up"></i></button><button class="icon-btn" onclick="moveNav(${index}, 1)" ${index===db.settings.navOrder.length-1?'disabled style="opacity:0.3"':''}><i class="fas fa-arrow-down"></i></button></div></li>`; }); }
+        async function moveNav(idx, dir) { const arr = db.settings.navOrder; if(idx+dir < 0 || idx+dir >= arr.length) return; const temp = arr[idx]; arr[idx] = arr[idx+dir]; arr[idx+dir] = temp; renderReorderList(); showLoading(); await supabaseClient.from('thawq_settings').update({nav_order: arr}).eq('id', 1); hideLoading(); }
+        async function saveSettings() { const dataObj = { phone: document.getElementById('set-phone').value, vat_number: document.getElementById('set-vatNumber').value, theme: document.getElementById('set-theme').value, logo: document.getElementById('set-logo-b64').value }; showLoading(); await supabaseClient.from('thawq_settings').update(dataObj).eq('id', 1); db.settings.phone = dataObj.phone; db.settings.vatNumber = dataObj.vat_number; db.settings.theme = dataObj.theme; db.settings.logo = dataObj.logo; logAction('تعديل', 'إعدادات', `تغيير إعدادات المتجر`); applyThemeSetting(); renderSidebar(); hideLoading(); showToast('تم الحفظ'); }
+        function applyThemeSetting() { applyTheme(document.getElementById('set-theme').value); }
+
+        // ================= Boot & PWA Init =================
+        window.onload = async () => {
+            showLoading('جاري المزامنة...'); await initDB(); let isLoggedIn = false;
+            if(sessionStorage.getItem('thawq_session')) {
+                const savedSession = JSON.parse(sessionStorage.getItem('thawq_session'));
+                const verifyUser = db.users.find(u => u.username === savedSession.username && u.active);
+                if(verifyUser) {
+                    currentUser = verifyUser;
+                    const isAdmin = currentUser.username.includes('admin') || currentUser.username.includes('smartflow') || (currentUser.permissions && currentUser.permissions['users']);
+                    if(isAdmin) { if(!currentUser.permissions) currentUser.permissions = {}; currentUser.permissions['syslogs'] = true; }
+                    sessionStorage.setItem('thawq_session', JSON.stringify(currentUser));
+                    document.getElementById('logged-user-name').innerText = currentUser.name || currentUser.username;
+                    document.getElementById('logged-user-name').style.display = 'inline-block';
+                    loginSuccess(); isLoggedIn = true;
+                } else { sessionStorage.removeItem('thawq_session'); }
+            }
+            hideLoading(); if (!isLoggedIn) document.getElementById('login-view').classList.remove('hidden');
+            if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(err => console.log('PWA registration failed', err));
+        };
     </script>
 </body>
 </html>
